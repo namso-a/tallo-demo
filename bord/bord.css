@@ -1,0 +1,112 @@
+/* Arbejdsbordet: taettere sat end kundens platform. Faelles komponenter kommer fra felles/; kun Stempelblaek. */
+.side .brand { display: flex; align-items: center; gap: 10px; padding: 6px 10px 16px; font-weight: 800; letter-spacing: -.05em; font-size: 20px; color: var(--side-aktiv-tekst); }
+[data-skin="natbord"] .side .brand { color: #fff; }
+.side .brand small { font-weight: 500; letter-spacing: 0; font-size: 12px; color: var(--side-svag); padding: 2px 8px; border-radius: 999px; background: var(--side-aktiv); }
+.bruger-kort { margin: auto 0 10px; padding: 12px 14px; border-radius: var(--radius); background: var(--kort); color: var(--tekst); box-shadow: var(--kort-ramme), var(--kort-skygge); display: flex; gap: 10px; align-items: center; }
+[data-skin="natbord"] .bruger-kort { background: #221f2e; color: #e9e6f5; box-shadow: none; }
+.bruger-kort .ava { width: 34px; height: 34px; border-radius: 50%; background: var(--accent); color: var(--accent-tekst); display: grid; place-items: center; font-size: 12.5px; font-weight: 600; flex: none; }
+.bruger-kort small { display: block; color: var(--daempet); font-size: 12px; } [data-skin="natbord"] .bruger-kort small { color: #a39fbb; }
+.top.bord { padding: 14px 24px 0; gap: 12px; }
+.top.bord .soeg { max-width: 460px; }
+.top kbd, .genveje kbd { font-family: "Geist Mono", monospace; font-size: 11px; border-radius: 5px; padding: 1px 6px; background: var(--kort); box-shadow: inset 0 0 0 1px var(--lineal), 0 1px 0 var(--lineal); color: var(--daempet); }
+.sider.bord { padding: 12px 24px 24px; }
+
+/* indbakken */
+.ib { display: grid; grid-template-columns: 372px minmax(0, 1fr) 356px; gap: 0; height: calc(100vh - 170px); min-height: 520px; border-radius: var(--radius); overflow: hidden; background: var(--kort); box-shadow: var(--kort-ramme), var(--kort-skygge); }
+.ib > div { min-height: 0; overflow-y: auto; }
+.ib .liste-sp { border-right: 1px solid var(--lineal); background: var(--flade); }
+.post { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; padding: 11px 16px; border-bottom: 1px solid var(--lineal2); cursor: pointer; }
+.post:hover { background: var(--raekke-hover); }
+.post.valgt { background: var(--kort); box-shadow: inset 3px 0 0 var(--accent); }
+.post .kunde { font-size: 12px; color: var(--daempet); } .post .hvad { font-weight: 550; } .post .bel { font-family: "Geist Mono", monospace; font-size: 12.5px; text-align: right; }
+.post .fs { grid-column: 1 / -1; display: flex; justify-content: space-between; font-size: 12px; color: var(--daempet); }
+.sik { font-family: "Geist Mono", monospace; font-size: 12px; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.sik i { width: 34px; height: 5px; border-radius: 3px; background: var(--lineal); position: relative; overflow: hidden; }
+.sik i::after { content: ""; position: absolute; inset: 0; width: var(--s); background: var(--groen); }
+.sik.mid i::after { background: #c89a1a; } .sik.lav i::after { background: var(--roed); }
+.midt-fladen { background: color-mix(in srgb, var(--lineal2) 70%, var(--bg)); padding: 28px; display: flex; justify-content: center; align-items: flex-start; }
+.midt-fladen .fdok { width: min(520px, 100%); }
+.hoejre-panel { padding: 18px 20px; display: flex; flex-direction: column; gap: 14px; border-left: 1px solid var(--lineal); }
+.hoejre-panel h3 { margin: 0; font-size: 17px; letter-spacing: -.01em; } .hoejre-panel .sub { color: var(--daempet); font-size: 12.5px; margin-top: 2px; }
+.felt3 { display: grid; grid-template-columns: 92px 1fr; align-items: center; gap: 8px; padding: 4px 0; }
+.felt3 label { color: var(--daempet); font-size: 12.5px; } .felt3 .inp { padding: 6px 10px; font-size: 13.5px; font-family: "Geist Mono", monospace; }
+.forslag { background: var(--accent-svag); border-radius: 12px; padding: 12px 14px; }
+.forslag .k { font-weight: 600; font-size: 15px; display: flex; justify-content: space-between; gap: 8px; }
+.forslag .hvorfor { font-size: 12.5px; color: var(--daempet); margin-top: 6px; }
+.forslag.tomt { background: var(--roed-svag); }
+.handl { display: flex; flex-wrap: wrap; gap: 6px; }
+.handl .knap { padding: 8px 12px; font-size: 13px; }
+.handl .knap kbd { background: rgba(255,255,255,.2); color: inherit; box-shadow: none; }
+.handl .knap:not(.p) kbd { background: var(--lineal2); }
+.regelforslag { font-size: 12.5px; color: var(--accent); background: var(--accent-svag); border-radius: 10px; padding: 9px 12px; }
+.genveje { margin-top: auto; font-size: 12px; color: var(--svag); display: flex; flex-wrap: wrap; gap: 10px; }
+.modeskift { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+.modeskift .hoejre-side { margin-left: auto; }
+
+/* bunken */
+.bunke { display: grid; grid-template-columns: minmax(0, 1fr) 440px; gap: 36px; align-items: center; padding: 26px 34px 20px; background: color-mix(in srgb, var(--lineal2) 70%, var(--bg)); border-radius: var(--radius); min-height: 560px; }
+.bunke .stak { position: relative; display: grid; place-items: center; } .bunke .stak .fdok { width: min(500px, 100%); position: relative; z-index: 2; }
+.bunke .stak::before, .bunke .stak::after { content: ""; position: absolute; inset: 24px 40px; background: #fff; border-radius: 6px; box-shadow: inset 0 0 0 1px #ebe9e2; }
+.bunke .stak::before { transform: rotate(3deg); opacity: .7; } .bunke .stak::after { transform: rotate(-2.5deg) translateY(8px); opacity: .5; }
+.bunke .beslut { background: var(--kort); border-radius: 22px; padding: 26px; box-shadow: 0 30px 60px -30px rgba(20,20,30,.35), var(--kort-ramme); }
+.bunke .beslut .kunde { color: var(--daempet); font-size: 13px; } .bunke .beslut h2 { margin: 2px 0; font-size: 26px; letter-spacing: -.02em; }
+.bunke .beslut .bel { font-family: "Geist Mono", monospace; font-size: 32px; font-weight: 600; letter-spacing: -.03em; margin: 8px 0 14px; }
+.bunke .stor { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 16px; }
+.bunke .stor .knap { padding: 14px; font-size: 15px; justify-content: space-between; border-radius: 14px; } .bunke .stor .knap.p { grid-column: 1 / -1; font-size: 17px; padding: 18px; }
+.koe { display: flex; gap: 10px; padding: 14px 0 0; overflow-x: auto; align-items: stretch; }
+.koe .t { min-width: 140px; background: var(--kort); border-radius: 10px; padding: 9px 12px; font-size: 12px; box-shadow: var(--kort-ramme); cursor: pointer; }
+.koe .t b { display: block; font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .koe .t span { font-family: "Geist Mono", monospace; color: var(--daempet); }
+.koe .t.nu { box-shadow: inset 0 0 0 2px var(--accent); }
+.frem { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; } .frem .bar { flex: 1; height: 6px; background: var(--lineal2); border-radius: 3px; overflow: hidden; } .frem .bar i { display: block; height: 100%; background: var(--accent); }
+
+/* arket */
+.ark-tabel .r.gr { background: color-mix(in srgb, var(--lineal2) 60%, transparent); font-size: 13px; color: var(--daempet); font-weight: 550; }
+.ark-tabel .r { grid-template-columns: 30px minmax(0, 1.1fr) 70px minmax(0, 1.3fr) 110px 150px 80px 120px; padding-top: 9px; padding-bottom: 9px; }
+.cb { width: 16px; height: 16px; border-radius: 4px; box-shadow: inset 0 0 0 1.5px #c3c1b8; display: inline-block; cursor: pointer; vertical-align: middle; position: relative; background: var(--kort); border: 0; padding: 0; }
+.cb[aria-checked="true"] { background: var(--accent); box-shadow: none; } .cb[aria-checked="true"]::after { content: "✓"; color: #fff; font-size: 12px; position: absolute; left: 3px; top: -1px; }
+.handlinje { position: sticky; bottom: 14px; margin: 14px auto 0; width: max-content; max-width: 100%; background: var(--tekst); color: var(--kort); border-radius: 14px; padding: 10px 12px 10px 18px; display: flex; gap: 12px; align-items: center; box-shadow: 0 20px 40px -12px rgba(20,20,30,.5); font-size: 14px; }
+[data-skin="natbord"] .handlinje { background: #17151f; color: #fff; }
+.handlinje .knap { padding: 8px 14px; font-size: 13px; }
+
+/* kunder, regler, moms, log */
+.rkd { grid-template-columns: minmax(0, 1.6fr) 130px 90px 90px 90px 190px 130px 90px; }
+.rre { grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) minmax(0, 1fr) 150px 100px 70px; }
+.rlo { grid-template-columns: 120px 150px 170px minmax(0, 1fr) 70px; }
+.rmo { grid-template-columns: minmax(0, 1.5fr) 180px 130px 110px 110px; }
+.check { display: flex; gap: 12px; align-items: flex-start; padding: 10px 0; border-top: 1px solid var(--lineal2); }
+.check:first-child { border-top: 0; } .check .ik { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; flex: none; font-size: 12px; font-weight: 700; margin-top: 1px; }
+.check .ik.ok { background: var(--groen-svag); color: var(--groen); } .check .ik.nej { background: var(--roed-svag); color: var(--roed); }
+.check b { display: block; font-weight: 550; } .check small { color: var(--daempet); }
+.kaede { display: flex; align-items: center; gap: 14px; }
+.kaede .ikon { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: var(--groen-svag); color: var(--groen); }
+
+
+/* smalle skaerme: beslutningen bliver staaende, bilaget gaar */
+@media (max-width: 1180px) { .ib { grid-template-columns: 320px minmax(0, 1fr); } .ib .midt-fladen { display: none; } .bunke { grid-template-columns: 1fr; } }
+@media (max-width: 900px) { .app { display: block; } .side { position: static; height: auto; } .ib { grid-template-columns: 1fr; height: auto; } .sider.bord { padding: 12px 12px 90px; } }
+
+/* rigtige bilag: filen selv, ikke en tegning */
+.midt-fladen.fil { padding: 0; align-items: stretch; }
+.midt-fladen.fil iframe, .midt-fladen.fil object { width: 100%; height: 100%; border: 0; background: #fff; }
+.midt-fladen.fil img { max-width: 100%; max-height: 100%; object-fit: contain; margin: auto; display: block; padding: 18px; }
+.advarsel { font-size: 12.5px; color: var(--roed); background: var(--roed-svag); border-radius: 10px; padding: 8px 12px; }
+.advarsel + .advarsel { margin-top: -8px; }
+.vaelg2 { display: grid; grid-template-columns: minmax(0, 1fr) 128px; gap: 6px; }
+.vaelg2 .inp, .felt3 select.inp { padding: 7px 10px; font-size: 13.5px; }
+.svarfelt textarea { width: 100%; min-height: 76px; resize: vertical; font: inherit; font-size: 13.5px; }
+.svarfelt .handl { margin-top: 8px; }
+.post .type { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--svag); }
+.travl { opacity: .55; pointer-events: none; transition: opacity .12s ease-out; }
+
+/* login og 2-trins */
+.login { min-height: 100vh; display: grid; place-items: center; padding: 24px; background: var(--bg); }
+.login .kort { width: min(420px, 100%); padding: 32px; }
+.login .logo-ord { font-weight: 800; letter-spacing: -.05em; font-size: 22px; margin-bottom: 18px; }
+.login .logo-ord small { font-weight: 500; letter-spacing: 0; font-size: 12px; color: var(--daempet); margin-left: 6px; }
+.login h1 { margin: 0 0 6px; font-size: 28px; letter-spacing: -.03em; }
+.login .qr { display: grid; place-items: center; padding: 14px; margin: 14px 0; border-radius: 12px; background: #fff; box-shadow: inset 0 0 0 1px var(--lineal); }
+.login .qr img { width: 180px; height: 180px; }
+.login .hemmelig { font-family: "Geist Mono", monospace; font-size: 12.5px; word-break: break-all; color: var(--daempet); }
+.login .kode { font-family: "Geist Mono", monospace; font-size: 22px; letter-spacing: .3em; text-align: center; }
+.bunke .stak .bunkefil { width: min(560px, 100%); height: 640px; position: relative; z-index: 2; background: #fff; border-radius: 6px; overflow: hidden; box-shadow: 0 1px 0 #ebe9e2, 0 18px 40px -24px rgba(20,20,30,.35); padding: 0; }
+.bunke .stak .bunkefil:not(.fil) { display: grid; place-items: center; padding: 24px; }

@@ -1,0 +1,126 @@
+/* Kolonner i tabellerne og alt det, der er specifikt for kundens platform. */
+.rk { grid-template-columns: 148px 108px minmax(0, 1.7fr) minmax(0, 1fr) 84px 156px; }
+.rf { grid-template-columns: 56px minmax(0, 1.6fr) 112px 112px 100px 130px; }
+.rk2 { grid-template-columns: minmax(0, 1.7fr) 110px 90px 140px 130px 110px; }
+.rb { grid-template-columns: 112px minmax(0, 1.4fr) 100px 190px 150px; }
+.ru { grid-template-columns: 52px minmax(0, 1.6fr) 112px minmax(0, 1fr) 150px 140px; }
+.kpi { text-decoration: none; color: inherit; display: block; transition: box-shadow .15s ease-out; }
+.kpi:hover { box-shadow: inset 0 0 0 1.5px var(--accent), var(--kort-skygge); }
+.kpi .stort { font-size: 30px; }
+.ra { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1.3fr) 120px 120px 140px 90px; }
+.tildig .tl { display: flex; align-items: center; gap: 14px; padding: 13px 0; border-top: 1px solid var(--lineal2); cursor: pointer; }
+.tildig .tl:first-of-type { border-top: 0; } .tildig .tl .t { flex: 1; min-width: 0; } .tildig .tl .t b { display: block; font-weight: 600; font-size: 15.5px; }
+.tildig .tl .t small { display: block; color: var(--daempet); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tildig .tl:hover .t b { color: var(--accent); } .tildig .tl .statusprik { width: 10px; height: 10px; flex: none; }
+.statusprik.gul { background: #c89a1a; } .statusprik.accent { background: var(--accent); }
+.altok { display: flex; gap: 14px; align-items: center; padding: 6px 0; } .altok .ok { width: 40px; height: 40px; border-radius: 50%; background: var(--groen-svag); color: var(--groen); display: grid; place-items: center; flex: none; }
+.altok .ok svg { width: 22px; height: 22px; } .altok b { font-size: 16px; }
+.penge .pl { display: flex; align-items: center; gap: 12px; padding: 14px 0; border-top: 1px solid var(--lineal2); text-decoration: none; color: inherit; }
+.penge .pl:first-of-type { border-top: 0; } .penge .pl .t { flex: 1; min-width: 0; } .penge .pl .t b { display: block; font-weight: 550; } .penge .pl .t small { display: block; color: var(--daempet); font-size: 12.5px; }
+.penge .pl .b { font-size: 17px; font-weight: 600; white-space: nowrap; } .penge .pl .pil { color: var(--svag); font-size: 20px; } .penge .pl:hover .t b { color: var(--accent); }
+.tildig .tl, .penge .pl { border-top-style: dashed; }
+.scan .s-egne { position: absolute; top: 56px; left: 50%; transform: translateX(-50%); z-index: 3; border: 0; border-radius: 999px; padding: 8px 14px; font: 500 13.5px "Geist", sans-serif;
+  background: rgba(255,255,255,.16); color: #fff; white-space: nowrap; }
+.scan .s-egne[aria-pressed="true"] { background: #fff; color: #1b1a17; }
+.rv { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1fr); }
+.tk { display: flex; align-items: center; gap: 11px; min-width: 0; }
+.tt { min-width: 0; display: block; overflow: hidden; } .tt b { display: block; overflow: hidden; text-overflow: ellipsis; } .tt small { display: block; color: var(--svag); font-size: 12.5px; }
+.bilag-nr { display: inline-flex; align-items: center; gap: 5px; color: var(--daempet); font-size: 13.5px; font-variant-numeric: tabular-nums; }
+.bilag-nr svg { width: 14px; height: 14px; }
+.mob-firma { display: none; border: 0; background: none; padding: 0; }
+.bundnav, .ark, .scan { display: none; }
+
+/* ----------------------------------------------------------- mobil (telefon) ---- */
+@media (max-width: 1180px) and (min-width: 901px) { .gitter.kpier { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 900px) {
+  :root { --app-pad: 0px; --main-radius: 0px; --main-skygge: none; }
+  .app { display: block; }
+  .side { display: none; }
+  .main { overflow: visible; min-height: 100vh; }
+  .top { padding: 14px 16px 0; gap: 10px; position: sticky; top: 0; z-index: 20; background: var(--flade); padding-bottom: 10px; }
+  .top h1 { font-size: 21px; flex: 1; }
+  .mob-firma { display: block; }
+  .top .hoejre-side .knap { padding: 7px 12px; font-size: 13px; }
+  .sider { padding: 8px 14px 130px; }
+  .gitter.g3, .gitter.g2, .gitter.g21, .gitter.g12, .gitter.g4 { grid-template-columns: minmax(0, 1fr); }
+  .gitter.kpier { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; } .kpi { padding: 14px; } .kpi .stort { font-size: 22px; } .kpi .stort small { display: none; } .kpi h2 { font-size: 10.5px; }
+  .kort { padding: 16px; } .kort .stort { font-size: 30px; }
+  .tabel .r.h { display: none; }
+  .tabel .r { padding: 12px 14px; }
+  .rk { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "tekst bel" "st dato"; row-gap: 8px; }
+  .rk .c-tekst { grid-area: tekst; } .rk .c-bel { grid-area: bel; } .rk .c-st { grid-area: st; } .rk .c-dato { grid-area: dato; text-align: right; font-size: 13px; }
+  .rk .c-kat, .rk .c-bilag { display: none; }
+  .rf { grid-template-columns: minmax(0, 1fr) auto; row-gap: 6px; } .rf > :nth-child(1) { display: none; } .rf > :nth-child(3) { display: none; }
+  .rf > :nth-child(4) { grid-column: 1; text-align: left; font-size: 13px; } .rf > :nth-child(5) { grid-column: 2; grid-row: 2; justify-self: end; } .rf > :nth-child(6) { grid-column: 2; grid-row: 1; }
+  .rk2, .rb, .rv, .ra { grid-template-columns: minmax(0, 1fr) auto; } .ra > :nth-child(2), .ra > :nth-child(3), .ra > :nth-child(4) { display: none; } .rk2 > :nth-child(2), .rk2 > :nth-child(3), .rk2 > :nth-child(4), .rb > :nth-child(3) { display: none; }
+  .ru { grid-template-columns: 44px minmax(0, 1fr) auto; } .ru .c-dato, .ru .c-kat { display: none; } .ru > :nth-child(5) { display: none; }
+  .tom { padding: 30px 10px; }
+  .liste .li.sp { flex-direction: column; align-items: stretch; gap: 8px; } .liste .li.sp > div:last-child { justify-content: flex-start !important; }
+  .aar { display: none; }
+  .dropzone { flex-wrap: wrap; } .dropzone > .knap { flex: 1; justify-content: center; }
+  .skuffe, .skuffe.bred { inset: 0; width: 100%; border-radius: 0; }
+  .skuffe .sk[style*="grid-template-columns"] { grid-template-columns: minmax(0, 1fr) !important; }
+  .fdok { padding: 20px 16px 14px; } .fdok .fs { width: 100%; } .fdok .fb { flex-direction: column; gap: 8px; }
+  .skuffe .sf { flex-wrap: wrap; align-items: center; } #sendt-som { flex-basis: 100%; order: -1; text-align: right; }
+  .skinvaelger { bottom: 76px; }
+  .toast { bottom: 128px; }
+
+  .bundnav { display: grid; grid-template-columns: repeat(5, 1fr); position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; background: var(--side); color: var(--side-tekst);
+    border-top: 1px solid var(--lineal); padding: 6px 4px calc(8px + env(safe-area-inset-bottom)); align-items: end; }
+  .bundnav a, .bundnav > button:not(.fab) { display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 11.5px; text-decoration: none; color: inherit; border: 0; background: none;
+    padding: 6px 2px; position: relative; font-weight: 500; }
+  .bundnav svg { width: 22px; height: 22px; }
+  .bundnav [aria-current="page"], .bundnav .aktiv { color: var(--accent); font-weight: 650; }
+    .bundnav .tael { position: absolute; top: 0; left: calc(50% + 6px); background: var(--roed); color: #fff; border-radius: 999px; font: 600 10.5px "Geist", sans-serif; padding: 1px 6px; font-style: normal; }
+  .fab { justify-self: center; width: 60px; height: 60px; border-radius: 50%; border: 0; background: var(--accent); color: var(--accent-tekst); margin-top: -26px; display: grid; place-items: center;
+    box-shadow: 0 12px 26px -8px rgba(75,58,166,.7), 0 0 0 5px var(--side); }
+  .fab svg { width: 28px; height: 28px; }
+  .ark { display: block; position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; background: var(--kort); border-radius: 22px 22px 0 0; padding: 10px 14px calc(24px + env(safe-area-inset-bottom));
+    animation: opd .22s cubic-bezier(.2,.8,.2,1); }
+  .ark .greb { width: 40px; height: 4px; border-radius: 2px; background: var(--lineal); margin: 0 auto 10px; }
+  .ark a { display: flex; align-items: center; gap: 14px; padding: 14px 8px; text-decoration: none; border-top: 1px solid var(--lineal2); font-size: 16px; font-weight: 500; }
+  .ark a:first-of-type { border-top: 0; } .ark a svg { width: 22px; height: 22px; color: var(--accent); }
+  @keyframes opd { from { transform: translateY(30px); opacity: 0; } to { transform: none; opacity: 1; } }
+}
+
+/* scan: kameraet (på computeren som en telefon midt på skærmen) */
+.scan { display: block; position: fixed; z-index: 90; inset: 0; background: #1b1a17; color: #fff; max-width: 440px; margin: 0 auto; overflow: hidden; }
+@media (min-width: 901px) { .scan { inset: 28px 0; border-radius: 28px; box-shadow: 0 0 0 100vmax rgba(15,14,22,.6), 0 40px 80px rgba(0,0,0,.5); } }
+.scan .s-tip { position: absolute; top: 28px; left: 0; right: 0; text-align: center; font-size: 14px; opacity: .85; }
+.scan .s-foto { position: absolute; inset: 76px 22px 200px; border-radius: 20px; overflow: hidden; background: radial-gradient(120% 90% at 50% 40%, #6b6556 0%, #3b372f 60%, #23211c 100%); }
+.scan .s-bon { position: absolute; left: 20%; top: 8%; width: 60%; height: 78%; background: #f4f1e8; color: #444; transform: rotate(-4deg); box-shadow: 0 20px 40px rgba(0,0,0,.4); padding: 14px 12px;
+  font-family: "Geist Mono", monospace; font-size: 10px; line-height: 1.7; }
+.scan .s-ramme { position: absolute; left: calc(20% - 6px); top: calc(8% - 6px); width: calc(60% + 12px); height: calc(78% + 12px); transform: rotate(-4deg); border: 3px solid #b8adf5; border-radius: 6px; }
+.scan .s-tael { position: absolute; bottom: 150px; left: 0; right: 0; text-align: center; font-size: 14px; } .scan .s-tael span { background: rgba(255,255,255,.14); padding: 6px 12px; border-radius: 999px; }
+.scan .s-bund { position: absolute; bottom: 40px; left: 0; right: 0; display: flex; align-items: center; justify-content: space-around; }
+.scan .s-bund button { border: 0; background: none; color: #fff; font-size: 15px; width: 90px; }
+.scan .s-bund .s-udloeser { width: 76px; height: 76px; border-radius: 50%; border: 5px solid #fff; background: #fff; box-shadow: inset 0 0 0 4px #1b1a17; }
+
+/* Stempelblaek: ark oven paa ark med stiplede linjer som paa en kvittering */
+.kort-hoved { padding-bottom: 8px; border-bottom: 1px dashed var(--lineal); }
+.tabel .r { border-top-style: dashed; }
+.liste .li { border-top-style: dashed; }
+
+/* login */
+.login { min-height: 100vh; display: grid; place-items: center; padding: 24px; background: var(--bg); }
+.login .kort { width: min(420px, 100%); padding: 32px; }
+.login .logo-ord { font-weight: 800; letter-spacing: -.05em; font-size: 22px; margin-bottom: 18px; }
+.login h1 { margin: 0 0 6px; font-size: 28px; letter-spacing: -.03em; }
+
+/* udskrift: kun indholdet, ingen menu */
+@media print {
+  .side, .bundnav, .top .hoejre-side, .skinvaelger, .slor, .toast { display: none !important; }
+  .app { display: block; padding: 0; } .main { box-shadow: none; } body { background: #fff; }
+  .skuffe { position: static; box-shadow: none; width: auto; animation: none; } .skuffe .sf { display: none; }
+  body.har-lag #app { display: none; }
+}
+
+/* godkend (pakken 'selv') */
+.godk { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px 16px; align-items: center; }
+.godk .bel { font-size: 18px; font-weight: 600; text-align: right; }
+.godk .valg { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+@media (max-width: 700px) {
+  .godk { grid-template-columns: 1fr; }
+  .godk .bel { text-align: left; order: -1; }
+  .godk .valg { justify-content: stretch; } .godk .valg select { max-width: none !important; flex: 1 1 100%; } .godk .valg .knap { flex: 1; justify-content: center; }
+}

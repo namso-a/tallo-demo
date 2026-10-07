@@ -1,0 +1,16 @@
+@font-face{font-family:"Geist";src:url("../fonts/geist.woff2") format("woff2");font-weight:100 900;font-display:swap}
+@font-face{font-family:"Geist Mono";src:url("../fonts/geist-mono.woff2") format("woff2");font-weight:100 900;font-display:swap}
+
+/* Stempelblaek (valgt af Othman 5. okt 2026): papir, sort tekst, én violet accent. */
+:root {
+  --bg: #f1f0ea; --side: #f6f6f3; --side-tekst: #3b3b38; --side-svag: #8a8a84; --side-aktiv: #fff; --side-aktiv-tekst: #141414;
+  --side-lineal: #e2e2dd; --side-ramme: inset 0 0 0 1px #e2e2dd; --side-kant: 1px solid #e2e2dd;
+  --flade: #fbfbf9; --kort: #fff; --tekst: #141414; --daempet: #5f5f5b; --svag: #8a8a84;
+  --lineal: #e2e2dd; --lineal2: #efeee9; --raekke-hover: #f6f6f3;
+  --accent: #4b3aa6; --accent-tekst: #fff; --accent-svag: #f0eef8; --accent-mid: #d9d4f1; --accent-lys: #8f84e0;
+  --groen: #1f7a4a; --groen-svag: #e6f4ec; --roed: #c4321c; --roed-svag: #fdebe7; --gul: #8a6510; --gul-svag: #fbf3dc;
+  --radius: 14px; --radius-lille: 9px; --kort-skygge: none; --kort-ramme: inset 0 0 0 1px var(--lineal);
+  --app-pad: 0px; --main-radius: 0px; --main-skygge: none;
+  --graf-ind: #4b3aa6; --graf-ud: #d9d4f1; --graf-linje: #141414;
+  --knap-radius: 999px; --display-vaegt: 600; --display-spacing: -.03em;
+}
