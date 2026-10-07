@@ -110,3 +110,12 @@
 .login .kode { font-family: "Geist Mono", monospace; font-size: 22px; letter-spacing: .3em; text-align: center; }
 .bunke .stak .bunkefil { width: min(560px, 100%); height: 640px; position: relative; z-index: 2; background: #fff; border-radius: 6px; overflow: hidden; box-shadow: 0 1px 0 #ebe9e2, 0 18px 40px -24px rgba(20,20,30,.35); padding: 0; }
 .bunke .stak .bunkefil:not(.fil) { display: grid; place-items: center; padding: 24px; }
+
+/* AI-bogholderen */
+.aiblok { background: #17151f; color: #e9e6f5; border-radius: 12px; padding: 12px 14px; box-shadow: 0 0 0 1px rgba(124,106,230,.35), 0 10px 30px -18px rgba(75,58,166,.8); }
+.aiblok .k { font-weight: 600; font-size: 14.5px; display: flex; justify-content: space-between; gap: 8px; }
+.aiblok .hvorfor { font-size: 12.5px; color: #b9b3d6; margin-top: 6px; }
+.aiblok .grund { font-size: 12.5px; color: #f2c46d; margin-top: 6px; }
+.aiblok.tom { background: var(--flade); color: var(--daempet); box-shadow: inset 0 0 0 1px var(--lineal); }
+.aiblok.tom small { display: block; font-size: 12px; }
+.rai { grid-template-columns: 100px minmax(0, 1.2fr) minmax(0, 1.6fr) 110px 110px 190px; align-items: center; }

@@ -9,9 +9,9 @@ const S = { route: "indbakke", tab: "alt", mode: "liste", sel: 0, rows: [], firm
             svar: null, rettet: {}, kunde: null, kundeTab: "overblik", momsKey: null, rap: { v: null, type: "resultat", periode: "aar" }, logV: null, travl: false };
 let BRUGER = null;
 
-const NAV = [["indbakke", "Indbakke", "overblik"], ["kunder", "Kunder", "salg"], ["regler", "Regler", "integrationer"], ["moms", "Moms", "moms"],
+const NAV = [["indbakke", "Indbakke", "overblik"], ["ai", "Bogført af AI", "check"], ["kunder", "Kunder", "salg"], ["regler", "Regler", "integrationer"], ["moms", "Moms", "moms"],
              ["rapporter", "Rapporter", "rapporter"], ["log", "Hændelseslog", "likviditet"], ["indstillinger", "Indstillinger", "indstillinger"]];
-const TITEL = { indbakke: "Indbakke", kunder: "Kunder", kunde: "Kunde", regler: "Regler", moms: "Momslukning", rapporter: "Rapporter", log: "Hændelseslog", indstillinger: "Indstillinger" };
+const TITEL = { ai: "Bogført af AI", indbakke: "Indbakke", kunder: "Kunder", kunde: "Kunde", regler: "Regler", moms: "Momslukning", rapporter: "Rapporter", log: "Hændelseslog", indstillinger: "Indstillinger" };
 const MOMSKODER = [["koeb_25", "Køb 25 %"], ["koeb_delvis", "Køb, delvis fradrag"], ["salg_25", "Salg 25 %"], ["eu_varer", "EU-varer"], ["eu_ydelser", "EU-ydelser"],
                    ["omvendt", "Omvendt betalingspligt"], ["uden_moms", "Uden moms"], ["", "Ingen moms"]];
 const MOMSFELT = [["MomsAngivelseSalgsMomsBeloeb", "Salgsmoms"], ["MomsAngivelseKoebsMomsBeloeb", "Købsmoms"], ["MomsAngivelseMomsEUKoebBeloeb", "Moms af varekøb i udlandet"],
@@ -22,6 +22,10 @@ const MOMSFELT = [["MomsAngivelseSalgsMomsBeloeb", "Salgsmoms"], ["MomsAngivelse
   ["MomsAngivelseCO2AfgiftBeloeb", "CO2-afgift"], ["MomsAngivelseVandAfgiftBeloeb", "Vandafgift"], ["MomsAngivelseAfgiftTilsvarBeloeb", "Momstilsvar (at betale)"]];
 
 // ------------------------------------------------------------------ data ----
+const GRUNDE = { ny_afsender: "første gang fra denne afsender", stort_beloeb: "beløbet er over grænsen", usikker: "AI'en var ikke sikker nok",
+  advarsel: "bilaget har advarsler", ulaest: "bilaget kunne ikke læses helt", moms: "momsen passer ikke med beløbet",
+  beloeb_passer_ikke: "banklinjen passer ikke med beløbet", ingen_betaling: "der mangler en betaling", laast_periode: "perioden er låst",
+  ingen_konto: "AI'en fandt ingen konto", selvbogfoerer: "kunden bogfører selv", ai_undtagelse: "AI'en bad om et menneske", mangler_bilag: "der mangler et bilag til udgiften", ai_spoerg: "AI'en har spurgt kunden" };
 const noegle = (r) => r.type + ":" + (r.id || r.virksomhed_id + r.dato);
 const firma = (v) => S.firmaer.find((x) => x.id === v) || {};
 async function hent() {
@@ -57,6 +61,10 @@ async function detalje(r) {
       const s = await sb.storage.from("bilag").createSignedUrl(`${r.virksomhed_id}/${data.sha256}`, 900);
       d.url = s.data?.signedUrl || null;
     }
+  }
+  if (r.type === "bilag" || r.type === "bank") {
+    const ai = await rpc("ai_seneste", { p_bilag: r.type === "bilag" ? [r.id] : [], p_bank: r.type === "bank" ? [r.id] : [] }).catch(() => []);
+    d.ai = ai[0] || null;
   }
   if (btId) {
     d.bt = (await sb.from("banktransaktion").select("id, dato, tekst, beloeb").eq("id", btId).maybeSingle()).data;
@@ -105,8 +113,17 @@ function svarFelt(r) {
     <div class="handl"><button class="knap p" data-act="svar-send">${S.svar.hvad === "afvis" ? "Afvis bilaget" : "Send"}</button><button class="knap" data-act="svar-luk">Fortryd</button></div></div>`;
 }
 
+function aiBlok(d) {
+  const a = d.ai;
+  if (!a) return `<div class="aiblok tom"><b>AI'en har ikke set posten endnu</b><small>Den kommer med i næste kørsel.</small></div>`;
+  const hvorfor = (a.grunde || []).map((g) => GRUNDE[g] || g).join(", ");
+  return `<div class="aiblok"><div class="k"><span>AI'en foreslår ${a.konto ? E(a.konto) : "intet"} ${a.konto ? E(kontonavn(d.ai_v, a.konto)) : ""}</span>${sikH(+a.sikkerhed)}</div>
+    <div class="hvorfor">${E(a.begrundelse)}</div>${hvorfor ? `<div class="grund">Bogførte ikke selv, fordi ${E(hvorfor)}.</div>` : ""}</div>`;
+}
 function bilagPanel(r) {
-  const d = S.det[r.key] || {}, u = d.bilag?.udtrukket || {}, f = r.forslag || {}, v = r.virksomhed_id;
+  const d = S.det[r.key] || {}, u = d.bilag?.udtrukket || {}, f = { ...(r.forslag || {}) }, v = r.virksomhed_id;
+  d.ai_v = v;
+  if (d.ai?.konto && !f.konto) { f.konto = d.ai.konto; f.momskode = d.ai.momskode; }
   const kontrol = (r.kontrol || []).map((k) => `<div class="advarsel">${E(k.besked)}</div>`).join("");
   const kandidater = S.rows.filter((x) => x.type === "bank" && x.virksomhed_id === v && r.beloeb != null && Math.abs(Math.abs(x.beloeb) - r.beloeb) < 0.005);
   const valgt = S.rettet[r.key]?.["f-betalt"] ?? (f.banktransaktion_id ? "bt:" + f.banktransaktion_id : f.udlaeg ? "konto:" + (f.modkonto || ejerkonto(v)) : "konto:" + (leverandoergaeld(v) || ""));
@@ -116,7 +133,7 @@ function bilagPanel(r) {
   return `<div class="hoejre-panel"><div><h3>${E(r.tekst)}</h3><div class="sub">${E(r.virksomhed)} · ${KILDE[d.bilag?.kilde] || "bilag"}${d.bilag?.udlaeg ? " · udlæg" : ""}</div></div>
     <div><div class="felt3"><label>Dato</label><span class="inp">${u.dato ? dk(u.dato) : "-"}</span></div><div class="felt3"><label>CVR</label><span class="inp">${E(u.cvr || "-")}</span></div>
       <div class="felt3"><label>Fakturanr.</label><span class="inp">${E(u.fakturanummer || "-")}</span></div><div class="felt3"><label>Total</label><span class="inp">${u.total != null ? kr(u.total) : "-"}</span></div>
-      <div class="felt3"><label>Moms</label><span class="inp">${u.moms != null ? kr(u.moms) : "-"}</span></div></div>${kontrol}
+      <div class="felt3"><label>Moms</label><span class="inp">${u.moms != null ? kr(u.moms) : "-"}</span></div></div>${kontrol}${aiBlok(d)}
     <div class="forslag ${f.konto ? "" : "tomt"}"><div class="k"><span>${f.konto ? `${E(f.konto)} ${E(kontonavn(v, f.konto))}` : "Intet forslag"}</span>${f.konto ? sikH(r.sikkerhed) : ""}</div>
       <div class="hvorfor">${f.begrundelse ? E(f.begrundelse) : r.tekst && r.beloeb == null ? "Bilaget kunne ikke læses. Spørg kunden efter et nyt, eller afvis det." : "Ingen tidligere bilag fra denne afsender. Vælg konto selv."}</div></div>
     <div><div class="felt3"><label>Konto</label>${kontoFelt(v, f.konto)}</div><div class="felt3"><label>Moms</label>${momsFelt(f.momskode || (f.konto ? "" : "koeb_25"))}</div>
@@ -127,13 +144,14 @@ function bilagPanel(r) {
 
 function bankPanel(r) {
   const d = S.det[r.key] || {}, f = r.forslag || {}, v = r.virksomhed_id;
+  d.ai_v = v;
   const bilag = S.rows.filter((x) => x.type === "bilag" && x.virksomhed_id === v && x.beloeb != null && Math.abs(x.beloeb - Math.abs(r.beloeb)) < 0.005);
   const beskeder = (d.beskeder || []).map((b) => `<div class="forslag"><div class="k"><span>Kunden skrev: "${E(b.tekst)}"</span></div><div class="hvorfor">${dk(b.oprettet)}</div></div>`).join("");
-  return `<div class="hoejre-panel"><div><h3>${E(r.tekst)}</h3><div class="sub">${E(r.virksomhed)} · banklinje ${dk(r.dato)}</div></div><div class="felt3"><label>Beløb</label><span class="inp">${r.beloeb > 0 ? "+" : ""}${kr(r.beloeb)}</span></div>${beskeder}
+  return `<div class="hoejre-panel"><div><h3>${E(r.tekst)}</h3><div class="sub">${E(r.virksomhed)} · banklinje ${dk(r.dato)}</div></div><div class="felt3"><label>Beløb</label><span class="inp">${r.beloeb > 0 ? "+" : ""}${kr(r.beloeb)}</span></div>${aiBlok(d)}${beskeder}
     ${f.faktura_id ? `<div class="forslag"><div class="k"><span>Faktura ${E(f.nummer)}</span>${pille("groen", "Passer")}</div><div class="hvorfor">${E(f.begrundelse)}</div></div>
       <div class="handl"><button class="knap p" data-act="godkend">Bogfør som betaling af faktura ${E(f.nummer)} <kbd>↵</kbd></button></div>` : ""}
     ${bilag.length ? `<div class="not" style="font-size:12.5px;color:var(--daempet)">Bilag i indbakken med samme beløb</div><div class="liste">${bilag.map((b) => `<div class="li" style="display:flex;gap:10px;padding:8px 0;align-items:center"><div class="t" style="flex:1"><b>${E(b.tekst)}</b><small>${kr(b.beloeb)} · ${b.dato ? F.datoKort(b.dato) : ""}</small></div><button class="knap lille" data-act="match" data-bilag="${b.key}">Brug bilaget</button></div>`).join("")}</div>` : ""}
-    <div><div class="not" style="font-size:12.5px;color:var(--daempet);margin-bottom:4px">Bogfør uden bilag</div><div class="felt3"><label>Konto</label>${kontoFelt(v, null)}</div><div class="felt3"><label>Moms</label>${momsFelt(r.beloeb > 0 ? "salg_25" : "koeb_25")}</div></div>
+    <div><div class="not" style="font-size:12.5px;color:var(--daempet);margin-bottom:4px">Bogfør uden bilag</div><div class="felt3"><label>Konto</label>${kontoFelt(v, d.ai?.konto || null)}</div><div class="felt3"><label>Moms</label>${momsFelt(d.ai?.momskode || (r.beloeb > 0 ? "salg_25" : "koeb_25"))}</div></div>
     <div class="handl">${f.faktura_id ? "" : `<button class="knap p" data-act="godkend">Bogfør <kbd>↵</kbd></button>`}${f.faktura_id ? `<button class="knap" data-act="uden-bilag">Bogfør på kontoen</button>` : ""}<button class="knap" data-act="spoerg">Spørg kunden <kbd>S</kbd></button></div>
     ${svarFelt(r)}${genv}</div>`;
 }
@@ -262,6 +280,28 @@ function kunde() {
     stamdata: `<div class="kort"><div class="gitter g2">${[["Navn", k.navn], ["CVR", k.cvr], ["Adresse", [k.adresse_vej, k.adresse_husnr].filter(Boolean).join(" ") + ", " + [k.adresse_postnr, k.adresse_by].filter(Boolean).join(" ")], ["Mail", k.email], ["Momsperiode", k.momsperiode], ["Bilagsadresse", k.indbakke ? k.indbakke + "@bilag.tallo.dk" : "Ikke sat op"], ["Kunde siden", dk(k.oprettet)], ["Bankkonti", K.afst.map((b) => b.navn).join(", ") || "Ingen"]].map(([l, v]) => `<div class="felt"><label>${l}</label><input class="inp" value="${E(v || "")}" readonly></div>`).join("")}</div><p class="not" style="margin:14px 0 0;font-size:13px">Stamdata rettes med scriptet; CVR-oplysninger hentes fra CVR-registeret.</p></div>`,
   };
   return `<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:14px"><a href="#kunder" class="knap lille">‹ Alle kunder</a><b style="font-size:17px">${E(k.navn)}</b><div class="faner" role="tablist" style="margin-left:auto">${tabs.map(([tb, n]) => `<button role="tab" aria-selected="${S.kundeTab === tb}" data-act="ktab" data-t="${tb}">${n}</button>`).join("")}</div></div>${ind[S.kundeTab]}`;
+}
+
+// -------------------------------------------------------------- bogført af AI ----
+async function hentAI() {
+  const rows = await rpc("bogfoert_af_ai");
+  await Promise.all([...new Set(rows.map((x) => x.virksomhed_id))].map(konti));
+  S.ai = rows;
+}
+function aiSide() {
+  const L = S.ai;
+  if (!L) return `<div class="tom">Henter ...</div>`;
+  const stik = L.filter((x) => x.stikproeve), resten = L.filter((x) => !x.stikproeve);
+  const raekke = (x) => `<div class="r rai"><div>${x.stikproeve ? pille("accent", "Stikprøve") : ""}</div><div class="tekst"><b style="font-weight:550">${E(x.tekst)}</b><small class="not" style="display:block">${E(x.virksomhed)} · ${dk(x.dato)}</small></div>
+    <div class="tekst">${E(x.konto)} ${E(kontonavn(x.virksomhed_id, x.konto))}<small class="not" style="display:block">${E(x.begrundelse)}</small></div><div class="b mono">${kr(x.beloeb)}</div><div>${sikH(+x.sikkerhed)}</div>
+    <div class="b" style="display:flex;gap:6px;justify-content:flex-end"><button class="knap lille p" data-act="ai-ok" data-id="${x.vurdering_id}">Godkend</button><button class="knap lille" data-act="ai-tilbage" data-id="${x.postering_id}">Tilbagefør</button></div></div>
+    ${S.aiTilbage === x.postering_id ? `<div class="r" style="grid-template-columns:minmax(0,1fr) auto auto;gap:8px;background:var(--accent-svag)"><input class="inp" id="f-grund" placeholder="Hvorfor er det forkert? (gemmes i loggen)" autocomplete="off"><button class="knap lille p" data-act="ai-tilbage-ok" data-id="${x.postering_id}">Tilbagefør</button><button class="knap lille" data-act="tilbagefoer-fortryd">Fortryd</button></div>` : ""}`;
+  const hoved = `<div class="r rai h"><div></div><div>Post</div><div>Konto og begrundelse</div><div class="b">Beløb</div><div>Sikkerhed</div><div></div></div>`;
+  return `<div class="gitter g3" style="margin-bottom:16px"><div class="kort"><h2>Til gennemsyn</h2><div class="stort tal">${L.length}</div><div class="not">bogført af AI, ikke set af et menneske</div></div>
+      <div class="kort"><h2>Stikprøver</h2><div class="stort tal">${stik.length}</div><div class="not">udtaget tilfældigt; se dem først</div></div>
+      <div class="kort"><h2>I indbakken</h2><div class="stort tal">${S.rows.filter((x) => x.type === "bilag" || x.type === "bank").length}</div><div class="not">undtagelser, AI'en ikke bogførte selv</div></div></div>
+    ${stik.length ? `<div class="kort tabeldel" style="margin-bottom:16px"><div class="kort-hoved" style="padding:18px 20px 0"><h2>Stikprøver</h2>${stik.length > 1 ? `<button class="knap lille" data-act="ai-alle" data-hvilke="stik">Godkend alle ${stik.length}</button>` : ""}</div><div class="tabel">${hoved}${stik.map(raekke).join("")}</div></div>` : ""}
+    <div class="kort tabeldel"><div class="kort-hoved" style="padding:18px 20px 0"><h2>Resten</h2>${resten.length ? `<button class="knap lille" data-act="ai-alle" data-hvilke="resten">Godkend alle ${resten.length}</button>` : ""}</div><div class="tabel">${hoved}${resten.map(raekke).join("") || '<div class="tom">Intet at se igennem.</div>'}</div></div>`;
 }
 
 // ------------------------------------------------------------------ regler ----
@@ -395,7 +435,7 @@ function indstillinger() {
       <div class="handl" style="margin-top:12px"><button class="knap" data-act="logud">Log ud</button></div></div>
     <div class="kort"><div class="kort-hoved"><h2>Tastaturgenveje</h2></div><div class="genveje" style="display:grid;grid-template-columns:auto 1fr;gap:8px 14px;font-size:14px;color:var(--tekst)"><span><kbd>J</kbd> <kbd>K</kbd></span><span>Op og ned i listen</span><span><kbd>↵</kbd></span><span>Godkend</span><span><kbd>E</kbd></span><span>Ret konto eller moms</span><span><kbd>S</kbd></span><span>Spørg kunden</span><span><kbd>A</kbd></span><span>Afvis med begrundelse</span><span><kbd>/</kbd></span><span>Søg</span><span><kbd>G</kbd> <kbd>K</kbd></span><span>Gå til kunder</span></div></div></div>`;
 }
-const VIEWS = { indbakke, kunder, kunde, regler, moms, rapporter, log, indstillinger };
+const VIEWS = { ai: aiSide, indbakke, kunder, kunde, regler, moms, rapporter, log, indstillinger };
 
 // ------------------------------------------------------------ skal og login ----
 function skal(indhold) {
@@ -601,11 +641,22 @@ async function handling(a, el, e) {
   if (a === "kunde") return travlt(async () => { await hentKunde(el.dataset.v); S.kundeTab = "overblik"; S.route = "kunde"; if (location.hash !== "#kunde") history.pushState(null, "", "#kunde"); });
   if (a === "ktab") { S.kundeTab = el.dataset.t; return render(); }
   if (a === "tilbagefoer") { S.tilbage = el.dataset.id; render(); return document.getElementById("f-grund")?.focus(); }
-  if (a === "tilbagefoer-fortryd") { S.tilbage = null; return render(); }
+  if (a === "tilbagefoer-fortryd") { S.tilbage = null; S.aiTilbage = null; return render(); }
   if (a === "tilbagefoer-ok") {
     const grund = vaerdi("f-grund");
     if (!grund) return F.toast("Skriv en begrundelse. Den gemmes i loggen.");
     return travlt(async () => { await rpc("tilbagefoer", { p_postering: el.dataset.id, p_begrundelse: grund }); S.tilbage = null; await hentKunde(S.kunde.v); await efter(`Postering ${el.dataset.nr} er tilbageført`); });
+  }
+  if (a === "ai-ok") return travlt(async () => { await rpc("marker_ai_gennemgaaet", { p_vurderinger: [el.dataset.id] }); await hentAI(); F.toast("Godkendt"); });
+  if (a === "ai-alle") {
+    const ids = (S.ai || []).filter((x) => (el.dataset.hvilke === "stik") === !!x.stikproeve).map((x) => x.vurdering_id);
+    return travlt(async () => { const n = await rpc("marker_ai_gennemgaaet", { p_vurderinger: ids }); await hentAI(); F.toast(`${n} godkendt`); });
+  }
+  if (a === "ai-tilbage") { S.aiTilbage = el.dataset.id; render(); return document.getElementById("f-grund")?.focus(); }
+  if (a === "ai-tilbage-ok") {
+    const grund = vaerdi("f-grund");
+    if (!grund) return F.toast("Skriv hvorfor. Det gemmes i loggen.");
+    return travlt(async () => { await rpc("tilbagefoer", { p_postering: el.dataset.id, p_begrundelse: "AI-fejl: " + grund }); S.aiTilbage = null; await hentAI(); await efter("Tilbageført. Posten ligger nu i indbakken igen."); });
   }
   if (a === "regel-fra") {
     if (!confirm(`Slå reglen ${el.dataset.id} fra? En regel kan ikke slås til igen; du opretter i så fald en ny.`)) return;
@@ -694,6 +745,7 @@ async function rute() {
   window.scrollTo(0, 0);
   try {
     if (S.route === "regler") { await hentRegler(); render(); }
+    if (S.route === "ai") { await hentAI(); render(); }
     if (S.route === "kunder" || S.route === "indbakke" || S.route === "moms") { await hent(); render(); }
   } catch (err) { F.toast(err.message); }
 }
