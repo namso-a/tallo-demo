@@ -1,6 +1,7 @@
 // Tallos app til kunden: computer og telefon. Skærmene er de godkendte fra mockuppen (system/design/platform);
 // data kommer fra kunde_data(), og hver handling kalder en funktion i databasen, der selv tjekker adgang og regler.
 import { DEMO, Fejl, LOKALT, logUd, rpc, sb, sendBilag, session, virksomheder } from "../felles/data.js";
+import { SUPABASE_URL } from "../felles/config.js";
 
   let T, V, IDAG, VID, BRUGER, FIRMAER = [];
   const E = F.esc, IC = F.ICON;
@@ -168,7 +169,7 @@ import { DEMO, Fejl, LOKALT, logUd, rpc, sb, sendBilag, session, virksomheder } 
       ind = `<div class="gitter g3" style="margin:16px 0"><div class="kort"><h2>Ubetalt</h2><div class="stort tal">${F.kr(sum(ub, (f) => f.total))} <small>DKK</small></div><div class="not">${ub.length} fakturaer</div></div>
         <div class="kort"><h2>Heraf for sent</h2><div class="stort tal" style="color:${forsent.length ? "var(--roed)" : "inherit"}">${F.kr(sum(forsent, (f) => f.total))} <small>DKK</small></div><div class="not">${forsent.length} faktura${forsent.length === 1 ? "" : "er"} · ${V.auto_paamindelse ? "påmindelser sendes af sig selv" : "påmindelser er slået fra"}</div></div>
         <div class="kort"><h2>Betalt i år</h2><div class="stort tal">${F.kr0(sum(betalt, (f) => f.total))} <small>DKK</small></div><div class="not">${betalt.length} fakturaer</div></div></div>
-        <div class="kort tabeldel"><div class="tabel"><div class="r rf h"><div>Nr.</div><div>Kunde</div><div class="c-dato">Dato</div><div class="c-dato">Forfald</div><div>Status</div><div class="b">Beløb</div></div>
+        ${udkastKort()}<div class="kort tabeldel"><div class="tabel"><div class="r rf h"><div>Nr.</div><div>Kunde</div><div class="c-dato">Dato</div><div class="c-dato">Forfald</div><div>Status</div><div class="b">Beløb</div></div>
         ${fl.map((f) => `<div class="r rf" role="button" tabindex="0" data-act="aabn-f" data-nr="${f.nr}"><div class="tal">${f.nr}</div><div class="tekst">${E(kunde(f.kunde).navn)}<small>${E(f.linjer[0].tekst)}${f.linjer.length > 1 ? " m.m." : ""}</small></div><div class="c-dato tal">${F.dato(f.dato)}</div><div class="c-dato tal">${F.dato(f.forfald)}</div><div>${pille(...fstat(f))}</div><div class="b">${F.kr(f.total)}</div></div>`).join("")}</div></div>`;
     } else if (S.salgTab === "tilbud") {
       const aabent = T.tilbud.filter((t) => t.status === "sendt");
@@ -190,6 +191,15 @@ import { DEMO, Fejl, LOKALT, logUd, rpc, sb, sendBilag, session, virksomheder } 
         <div class="tabelfod"><span>Når pengene kommer ind på kontoen, finder Tallo fakturaen og markerer den som betalt.</span></div></div>`;
     }
     return `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">${tabs}</div>${ind}`;
+  }
+
+  // Udkast, der venter: lavet af kundens egen AI (MCP) eller en faktura, der ikke blev sendt.
+  function udkastKort() {
+    const u = S.udkast || [];
+    if (!u.length) return "";
+    return `<div class="kort tabeldel" style="margin-bottom:16px"><div class="kort-hoved" style="padding:20px 20px 0"><h2>Udkast, der venter</h2>${pille("accent", u.length + " udkast")}</div><div class="tabel">
+      ${u.map((x) => `<div class="r rf"><div class="tal">Udkast</div><div class="tekst">${E(kunde(x.kunde).navn)}<small>${E(x.linjer?.[0]?.tekst || "")}${x.linjer?.length > 1 ? " m.m." : ""}${x.reference ? " · " + E(x.reference) : ""}</small></div><div class="c-dato tal">${F.dato(String(x.oprettet).slice(0, 10))}</div><div class="c-dato"></div><div style="display:flex;gap:6px"><button class="knap lille" data-act="udkast-slet" data-id="${x.id}">Slet</button><button class="knap lille p" data-act="udkast-send" data-id="${x.id}">Send</button></div><div class="b tal">${F.kr(x.total)} DKK</div></div>`).join("")}</div>
+      <div class="tabelfod"><span>Et udkast har intet nummer og er ikke bogført. Det bliver først en faktura, når du trykker Send.</span></div></div>`;
   }
 
   function udgifter() {
@@ -294,7 +304,7 @@ import { DEMO, Fejl, LOKALT, logUd, rpc, sb, sendBilag, session, virksomheder } 
   }
 
   function indstillinger() {
-    const tabs = [["firma", "Firma"], ["fakturaer", "Fakturaer"], ["brugere", "Brugere"], ["sikkerhed", "Sikkerhed"], ["abonnement", "Abonnement"], ["data", "Data"]];
+    const tabs = [["firma", "Firma"], ["fakturaer", "Fakturaer"], ["brugere", "Brugere"], ["sikkerhed", "Sikkerhed"], ["ai", "Din AI"], ["abonnement", "Abonnement"], ["data", "Data"]];
     const f = (l, v) => `<div class="felt"><label>${l}</label><input class="inp" value="${E(v)}" readonly></div>`;
     const ind = {
       firma: `<div class="kort"><div class="kort-hoved"><h2>Firmaoplysninger</h2></div><div class="gitter g2">${f("Navn", V.navn)}${f("CVR", V.cvr)}${f("Adresse", V.adresse)}${f("Bilagsadresse", V.bilagsadresse)}</div>
@@ -311,12 +321,33 @@ import { DEMO, Fejl, LOKALT, logUd, rpc, sb, sendBilag, session, virksomheder } 
         <div class="tabelfod"><span>Skal din revisor eller en medarbejder have adgang, så skriv til os. En revisor kan kun læse.</span></div></div>`,
       sikkerhed: `<div class="gitter g2"><div class="kort"><div class="kort-hoved"><h2>Login</h2></div><div class="liste"><div class="li"><div class="t"><b>Login med link på mail</b><small>Ingen adgangskode at huske</small></div>${pille("groen", "Til")}</div></div></div>
         <div class="kort"><div class="kort-hoved"><h2>Log ud</h2></div><p class="not" style="margin-top:0">Har du mistet en telefon eller lånt en computer, så log ud alle steder.</p><button class="knap" data-act="log-ud-alle">Log ud alle steder</button></div></div>`,
-      abonnement: `<div class="gitter g2"><div class="kort"><div class="kort-hoved"><h2>Dit abonnement</h2>${pille("groen", "Aktivt")}</div><div class="stort tal">1.000 <small>kr. om måneden, ekskl. moms</small></div><p class="not">Fast pris. Ubegrænset antal bilag og fakturaer. Ingen binding. Regnskabsprogrammet er med.</p></div>
+      ai: S.indTab === "ai" ? aiFane() : "",
+      abonnement: `<div class="gitter g2"><div class="kort"><div class="kort-hoved"><h2>${V.pakke === "selv" ? "Med AI" : "Med bogholder"}</h2>${V.aaben ? pille("groen", "Aktivt") : pille("graa", "Åbner ved lanceringen")}</div><div class="stort tal">${V.pakke === "selv" ? "349" : "799"} <small>kr. om måneden, ekskl. moms</small></div><p class="not">${V.pakke === "selv" ? "Programmet med AI-hjælp: du godkender selv, og vi står klar, hvis du er i tvivl." : "Vi bogfører, indberetter momsen og sender dig tallene hver måned. Ubegrænset antal bilag."} Fast pris. Ingen binding. Løn samt årsregnskab og selvangivelse kan købes til.</p></div>
         <div class="kort"><div class="kort-hoved"><h2>Tallo</h2></div><div class="li" style="border:0;padding:6px 0"><div class="t"><b>Registreringsnummer hos Erhvervsstyrelsen</b><small>Kommer, når registreringen er på plads</small></div>${pille("graa", "Afventer")}</div></div></div>`,
       data: `<div class="gitter g2"><div class="kort"><div class="kort-hoved"><h2>Dine data</h2></div><p class="not" style="margin-top:0">Alt, hvad du har bogført, tilhører dig. Vi sender det på mail samme dag.</p><button class="knap" data-act="bestil" data-hvad="Hele din bogføring">${IC.hent} Bestil hele din bogføring</button></div>
         <div class="kort"><div class="kort-hoved"><h2>Opbevaring</h2></div><div class="liste"><div class="li"><div class="t"><b>5 år</b><small>Bogføringen gemmes i 5 år efter regnskabsåret, som loven kræver, også hvis du stopper</small></div></div><div class="li"><div class="t"><b>Dine data ligger i EU</b><small>Krypteret, med daglig sikkerhedskopi hos en anden leverandør</small></div></div></div></div></div>`,
     };
     return `<div class="faner" role="tablist">${tabs.map(([k, t]) => `<button role="tab" aria-selected="${S.indTab === k}" data-act="indtab" data-t="${k}">${t}</button>`).join("")}</div><div style="margin-top:16px">${ind[S.indTab]}</div>`;
+  }
+
+  // Kundens egen AI (Claude, ChatGPT) over MCP. Forbindelserne er OAuth-tilladelser i Supabase Auth.
+  const MCP_URL = SUPABASE_URL.replace(/\/$/, "") + "/functions/v1/mcp";
+  async function hentGrants() {
+    if (S.grants) return;
+    const { data } = await sb.auth.oauth.listGrants().catch(() => ({ data: [] }));
+    S.grants = data || [];
+  }
+  function aiFane() {
+    if (!S.grants) hentGrants().then(render);
+    const g = S.grants || [];
+    return `<div class="gitter g2"><div class="kort"><div class="kort-hoved"><h2>Forbind din egen AI</h2></div>
+      <p class="not" style="margin-top:0">Spørg Claude eller ChatGPT om dine tal, og lad den lave udkast til fakturaer. Den kan aldrig bogføre, sende fakturaer, indberette moms eller slette.</p>
+      <div class="felt"><label for="mcp-url">Adresse til din AI</label><div style="display:flex;gap:8px"><input class="inp mono" id="mcp-url" value="${E(MCP_URL)}" readonly style="font-size:13px"><button class="knap" data-act="ai-kopier">Kopiér</button></div></div>
+      <div class="liste" style="margin-top:14px"><div class="li"><div class="t"><b>Claude</b><small>Indstillinger, Connectors, Tilføj custom connector. Indsæt adressen, og log ind med din Tallo-konto.</small></div></div>
+      <div class="li"><div class="t"><b>ChatGPT</b><small>Indstillinger, Apps og connectors, Avanceret: slå udviklertilstand til, opret en connector med adressen, og log ind.</small></div></div></div>
+      <p class="not" style="font-size:13px;margin-top:14px">Det, du spørger om, sendes til din AI's udbyder, ikke til Tallo. Du vælger selv, om du vil.</p></div>
+      <div class="kort tabeldel"><div class="kort-hoved" style="padding:20px 20px 0"><h2>Forbundne</h2></div><div class="liste" style="padding:0 20px 12px">
+      ${!S.grants ? '<p class="not">Henter ...</p>' : g.length ? g.map((x) => `<div class="li"><div class="t"><b>${E(x.client?.client_name || x.client?.name || "AI")}</b><small>Forbundet ${F.dato(String(x.granted_at || x.created_at || "").slice(0, 10))}</small></div><button class="knap lille" data-act="ai-fjern" data-id="${E(x.client?.client_id || x.client?.id || x.client_id || "")}">Slå fra</button></div>`).join("") : '<p class="not">Ingen AI er forbundet.</p>'}</div></div></div>`;
   }
 
   function konto() {
@@ -462,6 +493,7 @@ import { DEMO, Fejl, LOKALT, logUd, rpc, sb, sendBilag, session, virksomheder } 
     V = T.virksomhed; IDAG = T.idag;
     if (!V.ejer) V.ejer = BRUGER.navn || "";
     S.bank = await rpc("bankforbindelse_status", { p_virksomhed: VID }).catch(() => []);
+    S.udkast = await rpc("kunde_udkast", { p_virksomhed: VID }).catch(() => []);
     const { data: px } = await sb.from("virksomhed").select("pakke, aaben").eq("id", VID).single();
     V.pakke = px?.pakke || "fuld"; V.aaben = px?.aaben !== false;
     if (V.pakke === "selv") {
@@ -603,6 +635,24 @@ import { DEMO, Fejl, LOKALT, logUd, rpc, sb, sendBilag, session, virksomheder } 
       } else S.salgTab = "fakturaer";
       S.drawer = null; location.hash = "salg";
       return opdater(tekst);
+    }
+    if (a === "udkast-send") {
+      const x = S.udkast.find((u) => u.id === el.dataset.id);
+      if (!confirm(`Send fakturaen på ${F.kr(x.total)} kr. til ${kunde(x.kunde).navn}?`)) return;
+      const r = await rpc("kunde_send_faktura", { p_faktura: x.id });
+      return opdater(`Faktura ${r.nummer} er udstedt og sendes ${r.sendt_som === "efaktura" ? "som e-faktura" : "som PDF på mail"}`);
+    }
+    if (a === "udkast-slet") {
+      if (!confirm("Slet udkastet?")) return;
+      await rpc("kunde_slet_udkast", { p_faktura: el.dataset.id });
+      return opdater("Udkastet er slettet");
+    }
+    if (a === "ai-kopier") { await navigator.clipboard.writeText(MCP_URL).catch(() => {}); return F.toast("Adressen er kopieret"); }
+    if (a === "ai-fjern") {
+      if (!confirm("Slå forbindelsen fra? Din AI kan så ikke længere se dine tal.")) return;
+      const { error } = await sb.auth.oauth.revokeGrant({ clientId: el.dataset.id });
+      if (error) throw new Fejl("Forbindelsen kunne ikke slås fra. Prøv igen.");
+      S.grants = null; await hentGrants(); render(); return F.toast("Forbindelsen er slået fra");
     }
     if (a === "til-faktura") {
       const t = T.tilbud.find((x) => x.nr === el.dataset.nr);
