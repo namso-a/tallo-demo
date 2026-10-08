@@ -84,6 +84,12 @@ import { SUPABASE_URL } from "../felles/config.js";
     if (selv() && V.aaben && (S.ind || []).length) til.push(linje("accent", `${S.ind.length} ${S.ind.length > 1 ? "ting venter" : "ting venter"} på din godkendelse`, "AI'en har et forslag til hver; det tager et øjeblik", `<a class="knap lille p" href="#godkend">${IC.check} Godkend</a>`, null));
     if (mangler.length) til.push(linje("gul", `${mangler.length} betaling${mangler.length > 1 ? "er" : ""} mangler en kvittering`, E(mangler.map((t) => t.tekst).join(", ")), `<button class="knap lille p" data-act="scan">${IC.scan} Scan</button>`, "mangler_kvittering"));
     if (spm.length) til.push(linje("roed", `${spm.length} spørgsmål fra Othman`, E(spm.map((t) => t.tekst).join(", ")), `<button class="knap lille p" data-act="aabn-t" data-id="${spm[0].id}">Svar</button>`, "spoergsmal"));
+    if (S.nh?.status === "ikke_tilmeldt") {
+      if (!S.nh.besked_vist) { S.nh.besked_vist = new Date().toISOString(); rpc("nemhandel_besked_vist", { p_virksomhed: VID }).catch(() => {}); }
+      const dag = plusDage(S.nh.besked_vist.slice(0, 10), 28), varsel = IDAG >= "2027-03-01" ? ` Vi tilmelder dig ${F.datoLang(dag < "2027-03-01" ? "2027-03-01" : dag)}, medmindre du siger nej.` : "";
+      til.push(linje("accent", "Få regninger direkte ind i Tallo", `Vi tilmelder dit CVR i Nemhandel, så leverandører kan sende regninger direkte hertil. Gratis.${varsel}`,
+        `<span style="display:flex;gap:6px"><button class="knap lille" data-act="nh-nej">Nej tak</button><button class="knap lille p" data-act="nh-ja">Ja, tilmeld mig</button></span>`, null));
+    }
     if (T.udlaeg_skyldig > 0) til.push(linje("accent", `Firmaet skylder dig ${F.kr(T.udlaeg_skyldig)} kr. for udlæg`, "Overfør dem fra firmaets konto til din egen", udl.length ? `<button class="knap lille" data-act="aabn-u" data-id="${udl[0].id}">Se hvordan</button>` : "", null));
     const kpi = [["rapporter", "Overskud i år", F.kr0(over), overLy ? `${pille(over >= overLy ? "groen" : "roed", fortegn(pct(over, overLy)))} mod sidste år` : "Første år hos Tallo"],
       ["likviditet", "På kontoen", F.kr0(total()), T.transaktioner.length ? `Seneste betaling ${F.datoLang(T.transaktioner[T.transaktioner.length - 1].dato)}` : "Banken er ikke koblet til endnu"],
@@ -315,14 +321,15 @@ import { SUPABASE_URL } from "../felles/config.js";
           <div class="li"><div class="t"><b>Venlig påmindelse af sig selv</b><small>2 dage efter forfald, uden gebyr</small></div><button class="sw" role="switch" aria-checked="${V.auto_paamindelse}" aria-label="Påmindelse" data-act="sw-rykker"></button></div>
           <div class="li"><div class="t"><b>Betalingsfrist</b><small>Gælder nye fakturaer</small></div><select class="inp" style="width:auto" id="frist" aria-label="Betalingsfrist">${[8, 14, 30].map((d) => `<option value="${d}" ${V.betalingsfrist === d ? "selected" : ""}>${d} dage</option>`).join("")}</select></div>
           <div class="li"><div class="t"><b>Rykker med gebyr</b><small>Du trykker selv. 100 kr. pr. rykker, højst tre, og mindst 10 dage imellem (renteloven)</small></div>${pille("accent", "Manuelt")}</div>
-          <div class="li"><div class="t"><b>Betalingslink (kort og MobilePay)</b><small>Kommer, når betalingsudbyderen er på plads</small></div>${pille("graa", "Kommer")}</div></div></div></div>
+          <div class="li"><div class="t"><b>Betalingslink (kort og MobilePay)</b><small>Kommer, når betalingsudbyderen er på plads</small></div>${pille("graa", "Kommer")}</div>
+          <div class="li"><div class="t"><b>Regninger direkte ind (Nemhandel)</b><small>${{ tilmeldt: "Dine leverandører kan sende e-fakturaer til dit CVR", accepteret: "Vi tilmelder dig og skriver, når det er sket", afvist: "Tilmeldingen gik ikke igennem; vi kigger på det", fravalgt: "Du har sagt nej tak", ikke_tilmeldt: "Dine leverandører kan sende e-fakturaer direkte til Tallo" }[S.nh?.status || "ikke_tilmeldt"]}</small></div>${S.nh?.status === "tilmeldt" ? pille("groen", "Tilmeldt") : S.nh?.status === "accepteret" ? pille("accent", "På vej") : S.nh?.status === "afvist" ? pille("roed", "Fejl") : `<button class="knap lille p" data-act="nh-ja">Tilmeld mig</button>`}</div></div></div></div>
         <div class="kort tabeldel"><div class="kort-hoved" style="padding:20px 20px 0"><h2>Dine varer og ydelser</h2><button class="knap lille" data-act="skriv">Ny vare: skriv til os</button></div><div class="tabel">${T.varetyper.map((v) => `<div class="r rv"><div class="tekst">${E(v.navn)}</div><div class="b">${F.kr(v.pris)} / ${E(v.enhed)}</div><div class="not">Moms 25 %</div></div>`).join("") || '<div class="tom">Ingen varer endnu.</div>'}</div><div class="tabelfod"><span>Tallo har sat bogføringen op for hver. Du vælger bare varen.</span></div></div>`,
       brugere: `<div class="kort tabeldel"><div class="kort-hoved" style="padding:20px 20px 0"><h2>Brugere</h2>${pille("graa", "Invitationer kommer")}</div><div class="tabel">${[[BRUGER.navn || BRUGER.mail, BRUGER.mail, "Dig"], ["Othman (Tallo)", "Din bogholder", "Bogholder"]].map(([n, m, r2]) => `<div class="r rv"><div class="tekst">${E(n)}<small>${E(m)}</small></div><div>${pille("accent", r2)}</div><div></div></div>`).join("")}</div>
         <div class="tabelfod"><span>Skal din revisor eller en medarbejder have adgang, så skriv til os. En revisor kan kun læse.</span></div></div>`,
       sikkerhed: `<div class="gitter g2"><div class="kort"><div class="kort-hoved"><h2>Login</h2></div><div class="liste"><div class="li"><div class="t"><b>Login med link på mail</b><small>Ingen adgangskode at huske</small></div>${pille("groen", "Til")}</div></div></div>
         <div class="kort"><div class="kort-hoved"><h2>Log ud</h2></div><p class="not" style="margin-top:0">Har du mistet en telefon eller lånt en computer, så log ud alle steder.</p><button class="knap" data-act="log-ud-alle">Log ud alle steder</button></div></div>`,
       ai: S.indTab === "ai" ? aiFane() : "",
-      abonnement: `<div class="gitter g2"><div class="kort"><div class="kort-hoved"><h2>${V.pakke === "selv" ? "Med AI" : "Med bogholder"}</h2>${V.aaben ? pille("groen", "Aktivt") : pille("graa", "Åbner ved lanceringen")}</div><div class="stort tal">${V.pakke === "selv" ? "349" : "799"} <small>kr. om måneden, ekskl. moms</small></div><p class="not">${V.pakke === "selv" ? "Programmet med AI-hjælp: du godkender selv, og vi står klar, hvis du er i tvivl." : "Vi bogfører, indberetter momsen og sender dig tallene hver måned. Ubegrænset antal bilag."} Fast pris. Ingen binding. Løn samt årsregnskab og selvangivelse kan købes til.</p></div>
+      abonnement: `<div class="gitter g2"><div class="kort"><div class="kort-hoved"><h2>${V.pakke === "selv" ? "Gør det selv med AI" : "Med bogholder"}</h2>${V.aaben ? pille("groen", "Aktivt") : pille("graa", "Åbner ved lanceringen")}</div><div class="stort tal">${V.pakke === "selv" ? "349" : "799"} <small>kr. om måneden, ekskl. moms</small></div><p class="not">${V.pakke === "selv" ? "Programmet med AI-hjælp: du godkender selv, og vi står klar, hvis du er i tvivl." : "Vi bogfører, indberetter momsen og sender dig tallene hver måned. Ubegrænset antal bilag."} Fast pris. Ingen binding. Løn samt årsregnskab og selvangivelse kan købes til.</p></div>
         <div class="kort"><div class="kort-hoved"><h2>Tallo</h2></div><div class="li" style="border:0;padding:6px 0"><div class="t"><b>Registreringsnummer hos Erhvervsstyrelsen</b><small>Kommer, når registreringen er på plads</small></div>${pille("graa", "Afventer")}</div></div></div>`,
       data: `<div class="gitter g2"><div class="kort"><div class="kort-hoved"><h2>Dine data</h2></div><p class="not" style="margin-top:0">Alt, hvad du har bogført, tilhører dig. Vi sender det på mail samme dag.</p><button class="knap" data-act="bestil" data-hvad="Hele din bogføring">${IC.hent} Bestil hele din bogføring</button></div>
         <div class="kort"><div class="kort-hoved"><h2>Opbevaring</h2></div><div class="liste"><div class="li"><div class="t"><b>5 år</b><small>Bogføringen gemmes i 5 år efter regnskabsåret, som loven kræver, også hvis du stopper</small></div></div><div class="li"><div class="t"><b>Dine data ligger i EU</b><small>Krypteret, med daglig sikkerhedskopi hos en anden leverandør</small></div></div></div></div></div>`,
@@ -494,6 +501,7 @@ import { SUPABASE_URL } from "../felles/config.js";
     if (!V.ejer) V.ejer = BRUGER.navn || "";
     S.bank = await rpc("bankforbindelse_status", { p_virksomhed: VID }).catch(() => []);
     S.udkast = await rpc("kunde_udkast", { p_virksomhed: VID }).catch(() => []);
+    S.nh = (await sb.from("nemhandel_tilmelding").select("status, besked_vist").eq("virksomhed_id", VID).maybeSingle()).data || { status: "ikke_tilmeldt" };
     const { data: px } = await sb.from("virksomhed").select("pakke, aaben").eq("id", VID).single();
     V.pakke = px?.pakke || "fuld"; V.aaben = px?.aaben !== false;
     if (V.pakke === "selv") {
@@ -543,7 +551,7 @@ import { SUPABASE_URL } from "../felles/config.js";
       <div class="felt" style="margin-top:12px"><label for="t-navn">Virksomhedens navn</label><input class="inp" id="t-navn" value="${E(t.navn || "")}" required></div>
       <input type="hidden" id="t-vej" value="${E(t.vej || "")}"><input type="hidden" id="t-husnr" value="${E(t.husnr || "")}"><input type="hidden" id="t-postnr" value="${E(t.postnr || "")}"><input type="hidden" id="t-by" value="${E(t.by || "")}">
       <fieldset style="border:0;padding:0;margin:16px 0 0"><legend class="not" style="font-size:13px">Vælg pakke. Du kan skifte, når du vil.</legend>
-        ${pk("selv", "Med AI", 349, "Du godkender med ét tryk; AI'en foreslår, hvor dine bilag skal hen.")}
+        ${pk("selv", "Gør det selv med AI", 349, "Du godkender med ét tryk; AI'en foreslår, hvor dine bilag skal hen.")}
         ${pk("fuld", "Med bogholder", 799, "Vi bogfører det hele og indberetter momsen.")}</fieldset>
       <button class="knap p" style="margin-top:16px;width:100%;justify-content:center" type="submit">Opret din konto</button></form>
       ${besked ? `<p class="not" role="status" style="margin-top:14px">${E(besked)}</p>` : ""}
@@ -635,6 +643,14 @@ import { SUPABASE_URL } from "../felles/config.js";
       } else S.salgTab = "fakturaer";
       S.drawer = null; location.hash = "salg";
       return opdater(tekst);
+    }
+    if (a === "nh-ja") {
+      await rpc("nemhandel_accepter", { p_virksomhed: VID });
+      return opdater("Tak. Vi tilmelder dig Nemhandel og skriver, når det er sket");
+    }
+    if (a === "nh-nej") {
+      await rpc("nemhandel_sig_nej", { p_virksomhed: VID });
+      return opdater("Fint. Du kan altid ændre det under Indstillinger, Fakturaer");
     }
     if (a === "udkast-send") {
       const x = S.udkast.find((u) => u.id === el.dataset.id);
