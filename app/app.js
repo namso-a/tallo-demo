@@ -259,9 +259,9 @@ import { SUPABASE_URL } from "../felles/config.js";
       <tr class="sum"><td>Udgifter</td><td>${F.kr(-r.su)}</td><td>${F.kr(-r.suLy)}</td><td>${fortegn(pct(r.su, r.suLy))}</td></tr>${rows(r.ud, r.udLy)}
       <tr class="sum" style="font-size:16px"><td>Resultat</td><td style="color:${res >= 0 ? "var(--groen)" : "var(--roed)"}">${F.kr(res)}</td><td>${F.kr(resLy)}</td><td>${fortegn(pct(res, resLy))}</td></tr></tbody></table></div><p class="not" style="margin:12px 0 0">Beløb uden moms. Sidste år er samme periode i ${+IDAG.slice(0, 4) - 1}.</p></div>
       <div style="display:grid;gap:16px;align-content:start"><div class="kort"><div class="kort-hoved"><h2>Hent</h2></div><div class="liste">
-        ${[["Resultat og balance", "Udskriv eller gem som PDF", "PDF", "udskriv"], ["Alle betalinger", "Excel · hvert bilag og hver betaling", "XLSX", "bestil"], ["Hele din bogføring", "Standardfil (SAF-T) · til din revisor, eller hvis du skifter bogholder", "SAF-T", "bestil"], ["Alle bilag", "ZIP · billeder og PDF'er", "ZIP", "bestil"]]
-          .map(([n, t, f, h]) => `<div class="li"><span class="pille graa mono" style="min-width:52px;justify-content:center">${f}</span><div class="t"><b>${n}</b><small>${t}</small></div><button class="knap lille" data-act="${h}" data-hvad="${n}">${IC.hent} ${h === "udskriv" ? "Udskriv" : "Bestil"}</button></div>`).join("")}</div>
-        <p class="not" style="margin:10px 0 0;font-size:12.5px">Excel, standardfilen og bilagene sender vi på mail samme dag.</p></div>
+        ${[["Resultat og balance", "Udskriv eller gem som PDF", "PDF", "udskriv"], ["Alle betalinger", "Excel · hvert bilag og hver betaling", "XLSX", "bestil"], [`Standardfilen for ${IDAG.slice(0, 4)}`, "SAF-T · til din revisor, eller hvis du skifter program", "SAF-T", "udtraek", "saft"], ["Hele bogføringen med bilag", "ZIP · posteringer, kontoplan og alle bilag", "ZIP", "udtraek", "udlevering"]]
+          .map(([n, t, f, h, ty]) => `<div class="li"><span class="pille graa mono" style="min-width:52px;justify-content:center">${f}</span><div class="t"><b>${n}</b><small>${t}</small></div><button class="knap lille" data-act="${h}" data-hvad="${n}" ${ty ? `data-type="${ty}"` : ""}>${IC.hent} ${h === "udskriv" ? "Udskriv" : h === "udtraek" ? "Dan filen" : "Bestil"}</button></div>`).join("")}</div>
+        <p class="not" style="margin:10px 0 0;font-size:12.5px">Standardfilen og bogføringen står klar under Indstillinger, Data, om et øjeblik. Excel sender vi på mail samme dag.</p></div>
         <div class="kort"><div class="kort-hoved"><h2>Balance</h2><span class="not">${F.datoLang(IDAG)}</span></div><table class="vtabel"><tbody>
         <tr><td>Bankkonti</td><td>${F.kr(total())}</td></tr><tr><td>Penge hos kunder (ubetalte fakturaer)</td><td>${F.kr(deb)}</td></tr><tr class="sum"><td>Du ejer</td><td>${F.kr(akt)}</td></tr>
         <tr><td>Moms, der skal betales</td><td>${F.kr(kv3.at_betale)}</td></tr>${T.udlaeg_skyldig ? `<tr><td>Udlæg, firmaet skylder dig</td><td>${F.kr(T.udlaeg_skyldig)}</td></tr>` : ""}<tr class="sum"><td>Du skylder</td><td>${F.kr(gaeld)}</td></tr>
@@ -331,7 +331,9 @@ import { SUPABASE_URL } from "../felles/config.js";
       ai: S.indTab === "ai" ? aiFane() : "",
       abonnement: `<div class="gitter g2"><div class="kort"><div class="kort-hoved"><h2>${V.pakke === "selv" ? "Gør det selv med AI" : "Med bogholder"}</h2>${V.aaben ? pille("groen", "Aktivt") : pille("graa", "Åbner ved lanceringen")}</div><div class="stort tal">${V.pakke === "selv" ? "349" : "799"} <small>kr. om måneden, ekskl. moms</small></div><p class="not">${V.pakke === "selv" ? "Programmet med AI-hjælp: du godkender selv, og vi står klar, hvis du er i tvivl." : "Vi bogfører, indberetter momsen og sender dig tallene hver måned. Ubegrænset antal bilag."} Fast pris. Ingen binding. Løn samt årsregnskab og selvangivelse kan købes til.</p></div>
         <div class="kort"><div class="kort-hoved"><h2>Tallo</h2></div><div class="li" style="border:0;padding:6px 0"><div class="t"><b>Registreringsnummer hos Erhvervsstyrelsen</b><small>Kommer, når registreringen er på plads</small></div>${pille("graa", "Afventer")}</div></div></div>`,
-      data: `<div class="gitter g2"><div class="kort"><div class="kort-hoved"><h2>Dine data</h2></div><p class="not" style="margin-top:0">Alt, hvad du har bogført, tilhører dig. Vi sender det på mail samme dag.</p><button class="knap" data-act="bestil" data-hvad="Hele din bogføring">${IC.hent} Bestil hele din bogføring</button></div>
+      data: `<div class="gitter g2"><div class="kort"><div class="kort-hoved"><h2>Dine data</h2></div><p class="not" style="margin-top:0">Alt, hvad du har bogført, tilhører dig. Hent det, når du vil: SAF-T er det fælles format, alle regnskabsprogrammer kan læse; hele bogføringen er en zip med posteringer, kontoplan og alle bilag.</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="knap" data-act="udtraek" data-type="saft">${IC.hent} SAF-T for ${IDAG.slice(0, 4)}</button><button class="knap" data-act="udtraek" data-type="udlevering">${IC.hent} Hele bogføringen</button></div>
+        ${(S.udtraek || []).length ? `<div class="liste" style="margin-top:12px">${S.udtraek.map((u) => `<div class="li"><div class="t"><b>${u.type === "saft" ? "SAF-T " + u.fra.slice(0, 4) : "Hele bogføringen"}</b><small>Bestilt ${F.dato(u.bestilt_tid.slice(0, 10))}</small></div>${u.status === "klar" ? `<button class="knap lille p" data-act="hent-udtraek" data-sti="${E(u.sti)}" data-navn="${u.type === "saft" ? `saft-${V.cvr}-${u.fra.slice(0, 4)}.xml` : `bogfoering-${V.cvr}.zip`}">${IC.hent} Hent</button>` : u.status === "fejl" ? pille("roed", "Fejl, vi kigger på det") : pille("graa", "Dannes")}</div>`).join("")}</div>` : ""}</div>
         <div class="kort"><div class="kort-hoved"><h2>Opbevaring</h2></div><div class="liste"><div class="li"><div class="t"><b>5 år</b><small>Bogføringen gemmes i 5 år efter regnskabsåret, som loven kræver, også hvis du stopper</small></div></div><div class="li"><div class="t"><b>Dine data ligger i EU</b><small>Krypteret, med daglig sikkerhedskopi hos en anden leverandør</small></div></div></div></div></div>`,
     };
     return `<div class="faner" role="tablist">${tabs.map(([k, t]) => `<button role="tab" aria-selected="${S.indTab === k}" data-act="indtab" data-t="${k}">${t}</button>`).join("")}</div><div style="margin-top:16px">${ind[S.indTab]}</div>`;
@@ -501,6 +503,9 @@ import { SUPABASE_URL } from "../felles/config.js";
     if (!V.ejer) V.ejer = BRUGER.navn || "";
     S.bank = await rpc("bankforbindelse_status", { p_virksomhed: VID }).catch(() => []);
     S.udkast = await rpc("kunde_udkast", { p_virksomhed: VID }).catch(() => []);
+    S.udtraek = (await sb.from("udtraek_bestilling").select("id, type, fra, til, status, sti, bestilt_tid").eq("virksomhed_id", VID)
+      .order("bestilt_tid", { ascending: false }).limit(4)).data || [];
+    if (S.udtraek.some((u) => u.status === "venter") && !S.udtraekPoll) S.udtraekPoll = setTimeout(() => { S.udtraekPoll = null; opdater(); }, 8000);
     S.nh = (await sb.from("nemhandel_tilmelding").select("status, besked_vist").eq("virksomhed_id", VID).maybeSingle()).data || { status: "ikke_tilmeldt" };
     const { data: px } = await sb.from("virksomhed").select("pakke, aaben").eq("id", VID).single();
     V.pakke = px?.pakke || "fuld"; V.aaben = px?.aaben !== false;
@@ -643,6 +648,16 @@ import { SUPABASE_URL } from "../felles/config.js";
       } else S.salgTab = "fakturaer";
       S.drawer = null; location.hash = "salg";
       return opdater(tekst);
+    }
+    if (a === "udtraek") {
+      const saft = el.dataset.type === "saft";
+      await rpc("bestil_udtraek", { p_virksomhed: VID, p_type: el.dataset.type, p_fra: saft ? IDAG.slice(0, 4) + "-01-01" : null, p_til: saft ? IDAG : null });
+      return opdater(saft ? "SAF-T-filen dannes. Den står klar her om et øjeblik" : "Din bogføring pakkes. Den står klar her om et øjeblik");
+    }
+    if (a === "hent-udtraek") {
+      const { data } = await sb.storage.from("udtraek").createSignedUrl(el.dataset.sti, 300, { download: el.dataset.navn || true });
+      if (!data?.signedUrl) throw new Fejl("Filen kunne ikke hentes. Prøv igen.");
+      location.assign(data.signedUrl); return;
     }
     if (a === "nh-ja") {
       await rpc("nemhandel_accepter", { p_virksomhed: VID });

@@ -367,8 +367,17 @@ async function hentRapport() {
   const [, fra, til] = perioder()[R.periode];
   R.data = R.type === "saldo" ? await rpc("saldobalance", { p_virksomhed: v, p_fra: fra, p_til: til })
     : R.type === "balance" ? await rpc("balance", { p_virksomhed: v, p_pr: til }) : await rpc("resultatopgoerelse", { p_virksomhed: v, p_fra: fra, p_til: til });
+  R.udtraek = (await sb.from("udtraek_bestilling").select("id, type, fra, til, status, sti, fejl, bestilt_tid").eq("virksomhed_id", v)
+    .order("bestilt_tid", { ascending: false }).limit(5)).data || [];
   R.hentet = v + R.type + R.periode;
   render();
+  // En bestilling, der venter, bliver klar af sig selv (driftsserveren koerer hvert minut)
+  if (R.udtraek.some((u) => u.status === "venter") && !R.poll) R.poll = setTimeout(() => { R.poll = null; R.hentet = null; if (S.route === "rapporter") render(); }, 8000);
+}
+const UDTRAEK = { saft: "SAF-T", udlevering: "Hele bogføringen" };
+function udtraekListe(l) {
+  if (!l?.length) return "";
+  return `<div class="not" style="margin-top:14px">Bestilte udtræk</div>${l.map((u) => `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--linje)"><span style="font-size:13px">${UDTRAEK[u.type]}${u.fra ? ` ${F.dato(u.fra)}-${F.dato(u.til)}` : ""}</span>${u.status === "klar" ? `<button class="knap lille" data-act="hent-udtraek" data-sti="${E(u.sti)}" data-navn="${u.type === "saft" ? `saft-${firma(S.rap.v).cvr}-${u.fra}-${u.til}.xml` : `bogfoering-${firma(S.rap.v).cvr}.zip`}">${IC.hent} Hent</button>` : u.status === "fejl" ? `<span class="pille roed" title="${E(u.fejl || "")}">Fejl</span>` : `<span class="pille graa">Dannes</span>`}</div>`).join("")}`;
 }
 function rapporter() {
   const R = S.rap, P = perioder();
@@ -380,8 +389,8 @@ function rapporter() {
       <div class="felt"><label for="r-v">Kunde</label><select class="inp" id="r-v" data-rap="v">${S.firmaer.map((k) => `<option value="${k.id}" ${k.id === R.v ? "selected" : ""}>${E(k.navn)}</option>`).join("")}</select></div>
       <div class="felt" style="margin-top:10px"><label for="r-t">Rapport</label><select class="inp" id="r-t" data-rap="type">${[["resultat", "Resultatopgørelse"], ["balance", "Balance"], ["saldo", "Saldobalance"]].map(([k, t]) => `<option value="${k}" ${k === R.type ? "selected" : ""}>${t}</option>`).join("")}</select></div>
       <div class="felt" style="margin-top:10px"><label for="r-p">Periode</label><select class="inp" id="r-p" data-rap="periode">${Object.entries(P).map(([k, [t]]) => `<option value="${k}" ${k === R.periode ? "selected" : ""}>${t}</option>`).join("")}</select></div>
-      <div style="margin-top:16px" class="not">Eksport</div><div class="handl" style="margin-top:6px"><button class="knap" data-act="csv">${IC.hent} Regnskab Basis (CSV)</button><button class="knap" data-act="print">${IC.hent} PDF</button></div>
-      <p class="not" style="font-size:12.5px;margin:10px 0 0">SAF-T laves på driftsserveren (eksport/saft.py), indtil den får en knap.</p></div>
+      <div style="margin-top:16px" class="not">Eksport</div><div class="handl" style="margin-top:6px"><button class="knap" data-act="csv">${IC.hent} Regnskab Basis (CSV)</button><button class="knap" data-act="print">${IC.hent} PDF</button><button class="knap" data-act="saft">${IC.hent} SAF-T (XML)</button></div>
+      ${udtraekListe(R.udtraek)}</div>
     <div class="kort tabeldel"><div class="kort-hoved" style="padding:18px 20px 0"><h2>${titel}</h2><span class="not">${E(firma(R.v).navn)} · ${P[R.periode][0].toLowerCase()}</span></div>
       ${R.data ? `<table class="vtabel" style="margin-top:6px"><thead><tr><th>Konto</th><th style="text-align:left">Navn</th><th>Saldo</th></tr></thead><tbody>${linjer.map((l) => `<tr><td>${E(l.konto)}</td><td style="text-align:left">${E(l.navn)}</td><td>${kr(l.saldo)}</td></tr>`).join("")}
         <tr class="sum"><td></td><td style="text-align:left">${R.type === "resultat" ? "Resultat (negativ er overskud)" : R.type === "balance" ? (R.data.balancerer ? "Balancerer" : "Balancerer ikke") : "I alt"}</td><td>${kr(R.type === "balance" ? R.data.resultat_til_dato ?? sum : sum)}</td></tr></tbody></table>` : `<div class="tom">Henter ...</div>`}</div></div>`;
@@ -689,6 +698,16 @@ async function handling(a, el, e) {
   }
   if (a === "csv") return travlt(async () => { const [, fra, til] = perioder()[S.rap.periode]; download(`regnskab-basis-${firma(S.rap.v).cvr}-${til}.csv`, await rpc("regnskab_basis_csv", { p_virksomhed: S.rap.v, p_fra: fra, p_til: til })); });
   if (a === "print") return window.print();
+  if (a === "saft") return travlt(async () => {
+    const [, fra, til] = perioder()[S.rap.periode];
+    await rpc("bestil_udtraek", { p_virksomhed: S.rap.v, p_type: "saft", p_fra: fra, p_til: til });
+    S.rap.hentet = null; render(); F.toast("SAF-T-filen dannes og valideres. Den står klar her om et øjeblik.");
+  });
+  if (a === "hent-udtraek") {
+    const { data } = await sb.storage.from("udtraek").createSignedUrl(el.dataset.sti, 300, { download: el.dataset.navn || true });
+    if (data?.signedUrl) location.assign(data.signedUrl); else F.toast("Filen kunne ikke hentes. Prøv igen.");
+    return;
+  }
 }
 
 document.addEventListener("click", (e) => {
