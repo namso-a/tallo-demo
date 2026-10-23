@@ -35,24 +35,6 @@
     chat: I('<path d="M21 12a8 8 0 0 1-11.8 7L3 21l2-5.6A8 8 0 1 1 21 12z"/>'),
   };
 
-  function skinvaelger(links) {
-    const navne = { stempel: "Stempelblæk", dagslys: "Dagslys", natbord: "Natbord" };
-    const el = document.createElement("div");
-    el.className = "skinvaelger";
-    el.innerHTML = '<span>Udseende</span>' + Object.entries(navne).map(([k, v]) => `<button data-skin-valg="${k}" aria-pressed="false">${v}</button>`).join("") + (links || "");
-    document.body.appendChild(el);
-    const sæt = (s) => {
-      document.documentElement.dataset.skin = s;
-      try { localStorage.setItem("tallo-skin", s); } catch (e) { /* intet */ }
-      el.querySelectorAll("[data-skin-valg]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.skinValg === s)));
-    };
-    el.addEventListener("click", (e) => { const b = e.target.closest("[data-skin-valg]"); if (b) sæt(b.dataset.skinValg); });
-    const url = new URLSearchParams(location.search).get("skin");
-    let start = "stempel";
-    try { start = localStorage.getItem("tallo-skin") || start; } catch (e) { /* intet */ }
-    sæt(navne[url] ? url : start);
-  }
-
   window.F = {
     ICON,
     kr: (n) => n2.format(n),
@@ -64,13 +46,12 @@
     maaned: (m) => MNL[m - 1],
     maanedKort: (m) => MN[m - 1].replace(".", ""),
     esc: (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])),
-    skinvaelger,
     toast(tekst) {
       document.querySelectorAll(".toast").forEach((t) => t.remove());
       const t = document.createElement("div");
       t.className = "toast"; t.setAttribute("role", "status"); t.textContent = tekst;
       document.body.appendChild(t);
-      setTimeout(() => t.remove(), 2800);
+      setTimeout(() => { t.classList.add("ud"); setTimeout(() => t.remove(), 180); }, 2800);
     },
     /** Et tegnet kassebon-/fakturabilag ud fra en transaktion. */
     bon(t, v) {

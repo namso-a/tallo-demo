@@ -20,7 +20,10 @@ export async function fejltekst(err) {
       fejltekster = Object.fromEntries((data || []).map((r) => [r.kode, r.tekst]));
     }
     const detalje = (err.message || "").replace(/^[A-Z_]+:\s*/, "");
-    return detalje && !/^[a-z_]+$/i.test(detalje) ? detalje.charAt(0).toUpperCase() + detalje.slice(1) : fejltekster[kode] || err.message;
+    // Aeldre beskeder i databasen er skrevet uden æ, ø og å (fx "foerst"). Dem viser vi ikke for kunden; saa bruges
+    // fejlkodens tekst, som er skrevet ordentligt.
+    const translittereret = /(ae|oe|aa)/i.test(detalje) && !/[æøå]/i.test(detalje);
+    return detalje && !/^[a-z_]+$/i.test(detalje) && !translittereret ? detalje.charAt(0).toUpperCase() + detalje.slice(1) : fejltekster[kode] || err.message;
   }
   return err.message || String(err);
 }
@@ -66,6 +69,8 @@ export async function sendBilag(virksomhed, fil, udlaeg = false) {
   const r = await rpc("modtag_bilag", { p_virksomhed: virksomhed, p_filnavn: fil.name.slice(0, 200), p_sha256: sha, p_kilde: "scan",
                                          p_mime: fil.type || "application/pdf", p_stoerrelse: fil.size });
   if (udlaeg && !r.dublet) await rpc("marker_udlaeg", { p_bilag: r.bilag_id });
-  if (!r.dublet) sb.functions.invoke("scan", { body: { bilag_id: r.bilag_id } }).catch(() => {});   // læses i baggrunden
-  return r;
+  // Læses i baggrunden; laes giver svaret, så appen kan vise, hvad der faktisk skete (aldrig mere end det).
+  const laes = r.dublet ? Promise.resolve(null)
+    : sb.functions.invoke("scan", { body: { bilag_id: r.bilag_id } }).then((x) => x.data || null, () => null);
+  return { ...r, laes };
 }
