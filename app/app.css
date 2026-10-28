@@ -1,5 +1,5 @@
 /* Kolonner i tabellerne og alt det, der er specifikt for kundens platform. */
-.rk { grid-template-columns: 120px minmax(0, 1fr) 180px 150px; }
+.rk { grid-template-columns: 88px minmax(0, 1fr) minmax(0, 220px) 170px 140px; }
 .rf { grid-template-columns: 56px minmax(0, 1.6fr) 112px 112px 100px 130px; }
 .rk2 { grid-template-columns: minmax(0, 1.7fr) 110px 90px 140px 130px 200px; }
 .rb { grid-template-columns: 112px minmax(0, 1.4fr) 100px 190px 150px; }
@@ -7,44 +7,54 @@
 .ra { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1.3fr) 120px 120px 140px 150px; }
 .rv { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1fr); }
 .kpi { text-decoration: none; color: inherit; display: block; transition: box-shadow var(--hurtig) var(--let); }
-.kpi .stort { font-size: 28px; }
+.kpi .stort { font-size: var(--t-h1); }
 .tk { display: flex; align-items: center; gap: 11px; min-width: 0; }
-.tt { min-width: 0; display: block; overflow: hidden; } .tt b { display: block; overflow: hidden; text-overflow: ellipsis; } .tt small { display: block; color: var(--svag); font-size: 12px; }
-.bilag-nr { display: inline-flex; align-items: center; gap: 5px; color: var(--daempet); font-size: 14px; font-variant-numeric: tabular-nums; }
+.tt { min-width: 0; display: block; overflow: hidden; } .tt b { display: block; overflow: hidden; text-overflow: ellipsis; } .tt small { display: block; color: var(--daempet); font-size: var(--t-lille); }
+.bilag-nr { display: inline-flex; align-items: center; gap: 5px; color: var(--daempet); font-size: var(--t-lille); font-variant-numeric: tabular-nums; }
 .bilag-nr svg { width: 14px; height: 14px; }
 .mob-firma { display: none; border: 0; background: none; padding: 0; }
 .bundnav, .ark { display: none; }
 .kun-mobil { display: none; }
 
-/* ------------------------------------------------------------- overblikket ---- */
-/* Tre blokke (flow_kundeapp, 5. okt): Til dig, Sådan går det, Dine penge. Hvert tal står ét sted. */
-.overblik { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 20px; align-items: start; }
-.overblik .tildig { grid-row: span 2; }
-.tildig .tl { display: flex; align-items: center; gap: 14px; padding: 14px 0; border-top: 1px solid var(--lineal2); cursor: pointer; }
-.tildig .tl:first-of-type { border-top: 0; padding-top: 4px; } .tildig .tl .t { flex: 1; min-width: 0; }
-.tildig .tl .t b { display: block; font-weight: 520; font-size: 16px; }
-.tildig .tl .t small { display: block; color: var(--daempet); font-size: 14px; }
-@media (hover: hover) { .tildig .tl:hover .t b { color: var(--accent); } }
-.altok { display: flex; gap: 14px; align-items: center; padding: 4px 0; } .altok .ok { width: 40px; height: 40px; border-radius: 50%; background: var(--lineal2); color: var(--tekst); display: grid; place-items: center; flex: none; }
-.altok .ok svg { width: 22px; height: 22px; } .altok b { font-size: 16px; font-weight: 520; } .altok span.not { color: var(--daempet); }
-.penge .pl { display: flex; align-items: center; gap: 12px; padding: 16px 0; border-top: 1px solid var(--lineal2); text-decoration: none; color: inherit; }
-.penge .pl:first-of-type { border-top: 0; padding-top: 4px; } .penge .pl .t { flex: 1; min-width: 0; } .penge .pl .t b { display: block; font-weight: 520; color: var(--daempet); font-size: 14px; }
-.penge .pl .t .bel { display: block; font-size: 22px; font-weight: var(--display-vaegt); letter-spacing: -.02em; color: var(--tekst); font-variant-numeric: tabular-nums; margin-top: 2px; }
-.penge .pl .t small { display: block; color: var(--daempet); font-size: 14px; }
-.penge .pl .pil { color: var(--svag); font-size: 22px; transition: transform var(--hurtig) var(--let); }
-@media (hover: hover) { .penge .pl:hover .pil { transform: translateX(3px); color: var(--accent); } }
-.gaar .hoved { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 8px; }
-.gaar .tal-stort { font-size: 40px; font-weight: var(--display-vaegt); letter-spacing: -.035em; line-height: 1.05; font-variant-numeric: tabular-nums; }
-.gaar .tal-stort small { font-size: 16px; color: var(--svag); letter-spacing: 0; margin-left: 4px; }
-.gaar .forkl a { margin-left: auto; color: var(--accent); text-decoration: none; font-weight: 520; }
+/* --------------------------------------------------------------- forsiden ---- */
+/* Tallos egen (Othman 24. okt 2026): pengene i én sætning, Til dig, og betalingerne grupperet paa hvidt laerred. */
+.forside-top { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 560px); gap: 72px; padding-bottom: 40px; border-bottom: 1px solid var(--lineal); }
+.etiket { margin: 0; font-size: var(--t-lille); font-weight: 500; color: var(--daempet); letter-spacing: 0; }
+.forside-penge .stort { font-size: var(--t-tal); font-weight: 500; letter-spacing: -.035em; line-height: 1.1; margin-top: 8px; }
+.forside-penge .stort small { font-size: var(--t-stor); color: var(--daempet); font-weight: 400; letter-spacing: 0; margin-left: 4px; }
+.forside-penge p { margin: 14px 0 0; max-width: 540px; font-size: var(--t-stor); line-height: 1.55; color: var(--daempet); }
+.forside-penge p b { color: var(--tekst); font-weight: 500; }
+.forside-penge p a { color: inherit; text-decoration: underline; text-decoration-color: var(--lineal); text-underline-offset: 4px; transition: text-decoration-color var(--hurtig) var(--let); }
+@media (hover: hover) { .forside-penge p a:hover { text-decoration-color: var(--accent); } }
+.til-dig .etiket { margin-bottom: 4px; }
+.td { display: flex; align-items: center; gap: 16px; padding: 14px 0; border-top: 1px solid var(--lineal2); }
+.til-dig .etiket + .td, .til-dig .kom-i-gang + .td { border-top: 0; }
+.td .t { flex: 1; min-width: 0; } .td .t b { display: block; font-weight: 500; } .td .t small { display: block; color: var(--daempet); font-size: var(--t-lille); }
+.td.roed .t b { color: var(--roed); }
+.td-link { border: 0; background: none; padding: 6px 0; font: inherit; font-weight: 500; color: var(--accent); text-decoration: none; cursor: pointer; white-space: nowrap; transition: color var(--hurtig) var(--let); }
+@media (hover: hover) { .td-link:hover { color: var(--accent-hover); } }
+.altok { display: flex; gap: 14px; align-items: center; padding: 10px 0; } .altok .ok { width: 40px; height: 40px; border-radius: 50%; background: var(--bg); color: var(--tekst); display: grid; place-items: center; flex: none; }
+.altok .ok svg { width: 22px; height: 22px; } .altok b { font-size: var(--t-stor); font-weight: 500; } .altok span.not { color: var(--daempet); }
+.betalinger { padding-top: 36px; }
+.betalinger .tabel-top h2 { margin: 0 8px 0 0; font-size: var(--t-h2); font-weight: 500; letter-spacing: -.015em; }
+.betalinger .tabelfod { padding: 16px 0; border-top: 0; }
+.trtabel { margin: 0 -16px; width: auto; }
+.trtabel .r.h { display: none; }
+.trtabel .r.gr { display: block; position: sticky; top: 0; z-index: 2; background: var(--kort); min-height: 0; padding: 24px 16px 8px; border-top: 0; border-bottom: 1px solid var(--lineal);
+  font-size: var(--t-lille); font-weight: 500; color: var(--daempet); }
+.trtabel .r.gr .ant { margin-left: 8px; font-weight: 400; font-variant-numeric: tabular-nums; }
+.trtabel .r.gr + .r { border-top-color: transparent; }
+.trtabel .c-kat { color: var(--daempet); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.trtabel .c-st .stille { font-size: var(--t-lille); }
+.trtabel .tekst small.kun-mobil { display: none; }
 
 /* -------------------------------------------------------- godkend (pakken 'selv') ---- */
 .godk { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px 16px; align-items: center; }
-.godk .bel { font-size: 16px; font-weight: 520; text-align: right; }
+.godk .bel { font-size: var(--t-stor); font-weight: 500; text-align: right; }
 .godk .valg { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 
 /* ------------------------------------------------------------------- login ---- */
-.login .logo-ord { font-weight: 600; letter-spacing: -.05em; font-size: 22px; margin-bottom: 18px; color: var(--accent); }
+.login .logo-ord { font-weight: 600; letter-spacing: -.05em; font-size: var(--t-h2); margin-bottom: 18px; color: var(--accent); }
 
 /* -------------------------------------------------------- udskrift: kun indholdet ---- */
 @media print {
@@ -54,7 +64,7 @@
   body.har-lag #app { display: none; }
 }
 
-@media (max-width: 1180px) and (min-width: 901px) { .overblik { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+@media (max-width: 1280px) and (min-width: 901px) { .forside-top { grid-template-columns: minmax(0, 1fr) minmax(0, 440px); gap: 48px; } .rk { grid-template-columns: 80px minmax(0, 1fr) 160px 160px 120px; } }
 
 /* ===================================================================== telefon ==== */
 /* Indholdet er papir; det, der svaever (toppen ved rul, bundmenuen, scan, ark og skuffernes hoved og fod), er glas. */
@@ -67,21 +77,27 @@
   .top { position: sticky; top: 0; z-index: 20; padding: calc(12px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right)) 12px calc(16px + env(safe-area-inset-left));
     gap: 10px; background: transparent; transition: background var(--hurtig) var(--let), box-shadow var(--hurtig) var(--let); }
   .rullet .top { background: var(--glas-tyk); -webkit-backdrop-filter: var(--glas-filter); backdrop-filter: var(--glas-filter); box-shadow: 0 .5px 0 rgba(20,20,20,.1); }
-  .top h1 { font-size: 28px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .top h1 { font-size: var(--t-h1); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .mob-firma { display: block; }
-  .sider { padding: 6px calc(14px + env(safe-area-inset-right)) calc(120px + env(safe-area-inset-bottom)) calc(14px + env(safe-area-inset-left)); }
-  .gitter.g3, .gitter.g2, .gitter.g21, .gitter.g12, .gitter.g4, .overblik { grid-template-columns: minmax(0, 1fr); gap: 14px; }
-  .gitter.kpier { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; } .kpi { padding: 14px; } .kpi .stort { font-size: 22px; } .kpi .stort small { display: none; } .kpi h2 { font-size: 14px; }
-  .kort { padding: 18px; } .kort .stort { font-size: 28px; }
-  .gaar .tal-stort { font-size: 40px; }
+  .sider { padding: 8px calc(20px + env(safe-area-inset-right)) calc(120px + env(safe-area-inset-bottom)) calc(20px + env(safe-area-inset-left)); }
+  .gitter.g3, .gitter.g2, .gitter.g21, .gitter.g12, .gitter.g4 { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .gitter.kpier { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; } .kpi { padding: 16px; } .kpi .stort { font-size: var(--t-h2); } .kpi .stort small { display: none; } .kpi h2 { font-size: var(--t-lille); }
+  .kort { padding: 20px; } .kort .stort { font-size: var(--t-h1); }
+  .forside-top { grid-template-columns: minmax(0, 1fr); gap: 28px; padding-bottom: 28px; }
+  .forside-penge p { font-size: var(--t-tekst); }
+  .betalinger { padding-top: 24px; }
+  .betalinger .tabel-top h2 { flex: 1; } .betalinger .tabel-top .soeg { flex: 1 1 100%; order: 3; margin: 0; }
+  .trtabel { margin: 0 -8px; }
+  .trtabel .r.gr { position: static; padding: 20px 8px 6px; }
+  .trtabel .tekst small.kun-mobil { display: block; }
   .inp, select.inp, textarea.inp, .soeg input { font-size: 16px; }   /* under 16 px zoomer iOS ind ved fokus */
   .tabel .r.h { display: none; }
-  .tabel .r { padding: 13px 16px; }
-  .rk { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "tekst bel" "st st"; row-gap: 6px; }
-  .rk .c-tekst { grid-area: tekst; } .rk .c-bel { grid-area: bel; } .rk .c-st { grid-area: st; justify-self: start; } .rk .c-dato { display: none; }
+  .tabel .r { padding: 12px 8px; }
+  .rk { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "tekst bel" "tekst st"; row-gap: 4px; column-gap: 12px; }
+  .rk .c-tekst { grid-area: tekst; } .rk .c-bel { grid-area: bel; } .rk .c-st { grid-area: st; justify-self: end; } .rk .c-dato, .rk .c-kat { display: none; }
   .rk .c-st:empty { display: none; }
   .rf { grid-template-columns: minmax(0, 1fr) auto; row-gap: 6px; } .rf > :nth-child(1) { display: none; } .rf > :nth-child(3) { display: none; }
-  .rf > :nth-child(4) { grid-column: 1; text-align: left; font-size: 14px; } .rf > :nth-child(5) { grid-column: 2; grid-row: 2; justify-self: end; } .rf > :nth-child(6) { grid-column: 2; grid-row: 1; }
+  .rf > :nth-child(4) { grid-column: 1; text-align: left; font-size: var(--t-lille); } .rf > :nth-child(5) { grid-column: 2; grid-row: 2; justify-self: end; } .rf > :nth-child(6) { grid-column: 2; grid-row: 1; }
   .rk2, .rb, .rv, .ra { grid-template-columns: minmax(0, 1fr) auto; } .ra > :nth-child(2), .ra > :nth-child(3), .ra > :nth-child(4) { display: none; } .rk2 > :nth-child(2), .rk2 > :nth-child(3), .rk2 > :nth-child(4), .rb > :nth-child(3) { display: none; }
   .ru { grid-template-columns: 44px minmax(0, 1fr) auto; } .ru .c-dato, .ru .c-kat { display: none; } .ru > :nth-child(5) { display: none; }
   .tom { padding: 30px 10px; }
@@ -93,10 +109,10 @@
   .godk .valg { justify-content: stretch; } .godk .valg select { max-width: none !important; flex: 1 1 100%; } .godk .valg .knap { flex: 1; justify-content: center; }
 
   /* skuffer fylder skaermen; hoved og fod er glas over indholdet og respekterer notch og hjemmeindikator */
-  .skuffe, .skuffe.bred { inset: 0; width: 100%; border-radius: 0; animation-name: op; }
-  .skuffe .sh { padding: calc(14px + env(safe-area-inset-top)) calc(18px + env(safe-area-inset-right)) 14px calc(18px + env(safe-area-inset-left)); }
-  .skuffe .sk { padding: 18px calc(18px + env(safe-area-inset-right)) 18px calc(18px + env(safe-area-inset-left)); }
-  .skuffe .sf { padding: 12px calc(18px + env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) calc(18px + env(safe-area-inset-left)); flex-wrap: wrap; align-items: center; }
+  .skuffe, .skuffe.bred { inset: calc(10px + env(safe-area-inset-top)) 0 0 0; width: 100%; border-radius: var(--radius-stor) var(--radius-stor) 0 0; animation-name: op; }
+  .skuffe .sh { padding: 18px calc(20px + env(safe-area-inset-right)) 14px calc(20px + env(safe-area-inset-left)); }
+  .skuffe .sk { padding: 20px calc(20px + env(safe-area-inset-right)) 20px calc(20px + env(safe-area-inset-left)); }
+  .skuffe .sf { padding: 12px calc(20px + env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) calc(20px + env(safe-area-inset-left)); flex-wrap: wrap; align-items: center; }
   .skuffe .editor-grid { grid-template-columns: minmax(0, 1fr); }
   .fdok { padding: 20px 16px 14px; } .fdok .fs { width: 100%; } .fdok .fb { flex-direction: column; gap: 8px; }
   #sendt-som { flex-basis: 100%; order: -1; text-align: right; }
@@ -108,7 +124,7 @@
     height: 66px; padding: 0 6px; border-radius: 28px; color: var(--tekst);
     background: var(--glas); -webkit-backdrop-filter: var(--glas-filter); backdrop-filter: var(--glas-filter); box-shadow: var(--glas-kant), var(--glas-skygge); }
   .bundnav a, .bundnav > button:not(.fab) { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; height: 54px; font-size: 12px;
-    text-decoration: none; color: inherit; border: 0; background: none; position: relative; font-weight: 520; border-radius: 20px; transition: background var(--hurtig) var(--let); }
+    text-decoration: none; color: inherit; border: 0; background: none; position: relative; font-weight: 500; border-radius: 20px; transition: background var(--hurtig) var(--let); }
   .bundnav svg { width: 23px; height: 23px; }
   .bundnav [aria-current="page"], .bundnav .aktiv { color: var(--accent); }
   .bundnav .tael { position: absolute; top: 4px; left: calc(50% + 7px); background: var(--accent); color: #fff; border-radius: 999px; font: 600 12px "Geist", sans-serif; padding: 1px 6px; font-style: normal; }
@@ -119,11 +135,11 @@
 
   /* "Mere": et glasark, der glider op fra bunden */
   .ark { display: block; position: fixed; z-index: 50; left: calc(8px + env(safe-area-inset-left)); right: calc(8px + env(safe-area-inset-right)); bottom: calc(8px + env(safe-area-inset-bottom));
-    border-radius: 30px; padding: 10px 16px 14px; background: var(--glas-tyk); -webkit-backdrop-filter: var(--glas-filter); backdrop-filter: var(--glas-filter);
+    border-radius: var(--radius-stor); padding: 10px 16px 14px; background: var(--glas-tyk); -webkit-backdrop-filter: var(--glas-filter); backdrop-filter: var(--glas-filter);
     box-shadow: var(--glas-kant), var(--glas-skygge); animation: op var(--rolig) var(--let); overscroll-behavior: contain; }
   .ark .greb { width: 38px; height: 5px; border-radius: 3px; background: rgba(20, 20, 20, .18); margin: 2px auto 8px; }
   .ark a, .ark button.li-knap { display: flex; align-items: center; gap: 14px; width: 100%; padding: 14px 6px; text-decoration: none; border: 0; background: none; border-top: .5px solid rgba(20, 20, 20, .1);
-    font-size: 16px; font-weight: 520; color: var(--tekst); text-align: left; }
+    font-size: var(--t-stor); font-weight: 500; color: var(--tekst); text-align: left; }
   .ark > :is(a, button.li-knap):first-of-type { border-top: 0; } .ark svg { width: 22px; height: 22px; color: var(--daempet); }
   .ark .tael { margin-left: auto; background: var(--accent); color: #fff; border-radius: 999px; font: 600 12px "Geist", sans-serif; padding: 1px 8px; }
   @keyframes op { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
@@ -138,31 +154,31 @@
 }
 
 /* Kom godt i gang: en lille tjekliste i Til dig de foerste 60 dage */
-.kom-i-gang { background: var(--kort); border-radius: var(--radius-lille); box-shadow: inset 0 0 0 1px var(--lineal2); padding: 14px 16px; margin-bottom: 12px; }
-.kom-i-gang .kh { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; } .kom-i-gang .kh b { font-weight: 520; } .kom-i-gang .kh .ikonknap { margin-left: auto; width: 30px; height: 30px; }
+.kom-i-gang { background: var(--bg); border-radius: var(--radius); padding: 16px 20px; margin: 8px 0 12px; }
+.kom-i-gang .kh { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; } .kom-i-gang .kh b { font-weight: 560; } .kom-i-gang .kh .ikonknap { margin-left: auto; width: 30px; height: 30px; }
 .kom-i-gang .trin { display: flex; align-items: center; gap: 12px; padding: 9px 0; border-top: 1px solid var(--lineal2); }
 .kom-i-gang .trin:first-of-type { border-top: 0; } .kom-i-gang .trin .t { flex: 1; min-width: 0; }
-.kom-i-gang .trin.ok .t { color: var(--svag); text-decoration: line-through; text-decoration-color: var(--lineal); }
+.kom-i-gang .trin.ok .t { color: var(--daempet); text-decoration: line-through; text-decoration-color: var(--lineal); }
 .kom-i-gang .flueben { width: 22px; height: 22px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px var(--lineal); display: grid; place-items: center; flex: none; }
 .kom-i-gang .trin.ok .flueben { background: var(--tekst); box-shadow: none; color: #fff; } .kom-i-gang .flueben svg { width: 13px; height: 13px; }
 
 /* Én linje med status over en liste i stedet for talkort */
-.statuslinje { margin: 18px 2px 14px; color: var(--daempet); font-size: 16px; } .statuslinje b { color: var(--tekst); font-weight: 520; }
+.statuslinje { margin: 18px 2px 14px; color: var(--daempet); font-size: var(--t-stor); } .statuslinje b { color: var(--tekst); font-weight: 500; }
 
 /* Moms: valgt periode og udregningen, der kan foldes ud */
 .perioder .li { cursor: pointer; border-radius: var(--radius-lille); margin: 0 -12px; padding: 12px; }
 .perioder .li.valgt { background: var(--lineal2); border-top-color: transparent; } .perioder .li.valgt + .li { border-top-color: transparent; }
 .udregning { margin-top: 10px; border-top: 1px solid var(--lineal2); padding-top: 12px; }
-.udregning summary { cursor: pointer; color: var(--accent); font-weight: 520; list-style: none; } .udregning summary::-webkit-details-marker { display: none; }
+.udregning summary { cursor: pointer; color: var(--accent); font-weight: 500; list-style: none; } .udregning summary::-webkit-details-marker { display: none; }
 .udregning summary::after { content: " ›"; display: inline-block; transition: transform var(--hurtig) var(--let); } .udregning[open] summary::after { transform: rotate(90deg); }
-.felt .vaerdi { font-size: 16px; padding: 2px 0 6px; color: var(--tekst); }
+.felt .vaerdi { font-size: var(--t-tekst); padding: 2px 0 6px; color: var(--tekst); }
 
 /* Bilaget bogfoerer sig selv: hver bon lander og viser trin for trin, hvad der sker */
 .bonner { display: grid; gap: 10px; margin-top: 16px; }
 .bonkort { display: flex; align-items: center; gap: 14px; padding: 12px 14px; border-radius: var(--radius-lille); background: var(--kort); box-shadow: inset 0 0 0 1px var(--lineal2); }
 .bonkort.ny {
   animation: lander var(--rolig) var(--let) both; }
-.bonkort .t { flex: 1; min-width: 0; } .bonkort .t b { font-weight: 520; } .bonkort small { display: block; color: var(--daempet); margin-top: 2px; }
+.bonkort .t { flex: 1; min-width: 0; } .bonkort .t b { font-weight: 500; } .bonkort small { display: block; color: var(--daempet); margin-top: 2px; }
 .bonkort.fejl small { color: var(--roed); }
 .trinlinje { display: flex; gap: 4px; margin-top: 7px; } .trinlinje i { height: 3px; flex: 1; border-radius: 2px; background: var(--lineal2); transition: background var(--rolig) var(--let); }
 .trinlinje i.ok { background: var(--accent); } .trinlinje i.nu { background: var(--accent-mid); }
@@ -188,22 +204,21 @@
 /* Uploadfeltet: ikon og tekst oeverst, knapperne i fuld bredde nedenunder (pc og mobil) */
 .dropzone { flex-wrap: wrap; } .dz-tekst { flex: 1 1 200px; min-width: 0; }
 .dz-knapper { display: flex; gap: 8px; flex: 1 1 100%; } .dz-knapper .knap { flex: 1; justify-content: center; cursor: pointer; }
-.lille-titel { margin: 22px 2px 4px; font-size: 14px; font-weight: 520; color: var(--daempet); }
+.lille-titel { margin: 24px 2px 6px; font-size: var(--t-lille); font-weight: 500; color: var(--daempet); }
 
 /* Klasser i stedet for inline-stil (forenklingen 22. okt 2026) */
-.banner { margin: 0 0 16px; padding: 10px 14px; border-radius: var(--radius-lille); background: var(--accent-svag); color: var(--accent); font-size: 14px; }
-.gaar { display: block; text-decoration: none; color: inherit; } .gaar .kort-hoved .pil { color: var(--svag); font-size: 22px; }
-.gaar .not { margin-top: 4px; }
-.godk-top { margin-bottom: 14px; } .godk-liste { gap: 12px; } .godk-titel { display: block; font-size: 16px; font-weight: 520; } .kat-valg { max-width: 260px; }
-.stort-beloeb { font-size: 28px; font-weight: 520; letter-spacing: -.03em; }
+.banner { margin: 0 0 24px; padding: 12px 16px; border-radius: var(--radius-lille); background: var(--accent-svag); color: var(--accent); font-size: var(--t-tekst); }
+.godk-top { margin-bottom: 14px; } .godk-liste { gap: 12px; } .godk-titel { display: block; font-size: var(--t-stor); font-weight: 500; } .kat-valg { max-width: 260px; }
+.stort-beloeb { font-size: var(--t-h1); font-weight: 500; letter-spacing: -.03em; }
 .forb-kort { display: flex; flex-direction: column; gap: 10px; }
 .editor-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 24px; }
 .ed-linje { display: grid; grid-template-columns: minmax(0, 1fr) 62px 90px 30px; gap: 8px; margin-top: 8px; align-items: center; }
 .trin-liste { margin: 8px 0 0; padding-left: 18px; }
-.demo-note { font-size: 14px; margin-top: 10px; background: var(--accent-svag); padding: 10px 12px; border-radius: 10px; color: var(--daempet); }
+.demo-note { font-size: var(--t-lille); margin-top: 12px; background: var(--accent-svag); padding: 12px 14px; border-radius: var(--radius-lille); color: var(--daempet); }
 .login .kort.bred { width: min(480px, 100%); }
 fieldset.rent { border: 0; padding: 0; margin-left: 0; margin-right: 0; }
 .pakke-valg { display: flex; gap: 12px; align-items: flex-start; padding: 12px; box-shadow: inset 0 0 0 1px var(--lineal); border-radius: var(--radius-lille); margin-top: 8px; cursor: pointer; }
 .pakke-valg input { margin-top: 4px; } .pakke-valg:has(input:checked) { box-shadow: inset 0 0 0 1.5px var(--accent); }
 .st-tekst { color: var(--accent); }
 @media (max-width: 900px) { .moms-g > .stak { order: -1; } }
+

@@ -98,3 +98,7 @@
   .tabel .r.rpo:not(.h) .knap, .tabel .r.rai:not(.h) .knap { opacity: 0; transition: opacity var(--hurtig) var(--let); }
   .tabel .r.rpo:hover .knap, .tabel .r.rpo:focus-within .knap, .tabel .r.rai:hover .knap, .tabel .r.rai:focus-within .knap { opacity: 1; }
 }
+
+/* Arbejdsbordet bruger hele bredden med vilje: det er et vaerktoej, og indbakkens tre paneler vinder ved pladsen.
+   (Kundens app staar derimod i en centreret kolonne.) */
+.top.bord, .sider.bord { max-width: none; }

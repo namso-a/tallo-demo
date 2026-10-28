@@ -1,12 +1,12 @@
 // Tallos app til kunden: computer og telefon. Skærmene er de godkendte fra mockuppen (system/design/platform);
 // data kommer fra kunde_data(), og hver handling kalder en funktion i databasen, der selv tjekker adgang og regler.
-import { DEMO, Fejl, LOKALT, logUd, rpc, sb, sendBilag, session, virksomheder } from "../felles/data.js?v=20261024005715";
-import { SUPABASE_URL } from "../felles/config.js?v=20261024005715";
+import { DEMO, Fejl, LOKALT, logUd, rpc, sb, sendBilag, session, virksomheder } from "../felles/data.js?v=20261028204504";
+import { SUPABASE_URL } from "../felles/config.js?v=20261028204504";
 
   let T, V, IDAG, VID, BRUGER, FIRMAER = [];
   const E = F.esc, IC = F.ICON;
-  // Fem steder at gaa hen (Othman 19. okt: menuen maa samles). Ét navn for hver ting, ogsaa paa telefonen.
-  const NAV = [["overblik", "Overblik"], ["transaktioner", "Betalinger"], ["salg", "Fakturaer"], ["moms", "Moms"], ["rapporter", "Tal"]];
+  // Fire steder at gaa hen (Othman 24. okt 2026: betalingerne er forsiden). Ét navn for hver ting, ogsaa paa telefonen.
+  const NAV = [["overblik", "Overblik"], ["salg", "Fakturaer"], ["moms", "Moms"], ["rapporter", "Tal"]];
   const UNDER = [["indstillinger", "Indstillinger"]];
   const TITEL = { godkend: "Godkend", overblik: "Overblik", transaktioner: "Betalinger", salg: "Fakturaer", rapporter: "Tal",
     moms: "Moms", integrationer: "Forbindelser", indstillinger: "Indstillinger", konto: "Dig" };
@@ -80,29 +80,33 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261024005715";
   }
 
   // ----------------------------------------------------------------- skaerme ----
+  // Forsiden (Othman 24. okt 2026, "Tallos egen"): pengene i én sætning, det der venter på dig, og betalingerne
+  // grupperet, så det, der venter, står først. Hvert tal står ét sted; grafen og overskuddet bor under Tal.
   function overblik() {
     const mangler = T.transaktioner.filter((t) => t.status === "mangler_kvittering"), spm = T.transaktioner.filter((t) => t.status === "spoergsmal");
     const udl = T.udlaeg.filter((u) => u.status === "skylder"), ub = ubetalte(), forsent = ub.filter((f) => f.forfald < IDAG), kv = aktueltKvartal();
     const r = resultat("ar"), over = r.si - r.su, overLy = r.siLy - r.suLy;
-    // Til dig: det, kunden skal gøre, i rækkefølge. Kun den første har en violet knap.
+    // Til dig: det, kunden skal gøre, i rækkefølge. Én linje hver med handlingen til højre.
     const ting = [];
-    if (selv() && V.aaben && (S.ind || []).length) ting.push(["accent", `${S.ind.length} venter på dig`, "", "Godkend", `href="#godkend"`, null]);
-    if (!selv() && mangler.length) ting.push(["gul", `${mangler.length} betaling${mangler.length > 1 ? "er" : ""} mangler en kvittering`, E(mangler.slice(0, 3).map((t) => t.tekst.replace(/,.*$/, "")).join(", ")) + (mangler.length > 3 ? " m.fl." : ""), "Scan", `data-act="scan"`, "mangler_kvittering"]);
-    if (spm.length) ting.push(["roed", `${spm.length} spørgsmål fra ${selv() ? "Tallo" : "Othman"}`, E(spm.slice(0, 2).map((t) => t.tekst.replace(/,.*$/, "")).join(", ")), "Svar", `data-act="aabn-t" data-id="${spm[0].id}"`, "spoergsmal"]);
-    if (T.udlaeg_skyldig > 0) ting.push(["accent", `Firmaet skylder dig ${F.kr0(T.udlaeg_skyldig)} kr.`, "Du har lagt ud med egne penge", "Se hvordan", udl.length ? `data-act="aabn-u" data-id="${udl[0].id}"` : `href="#transaktioner"`, null]);
+    if (selv() && V.aaben && (S.ind || []).length) ting.push(["", `${S.ind.length} venter på dig`, "Godkend dem med ét tryk", "Godkend", `href="#godkend"`]);
+    const nk = selv() ? 0 : mangler.length, nv = nk + spm.length;
+    if (nv) ting.push(["", `${nv} betaling${nv > 1 ? "er" : ""} venter på dig`, [nk && `${nk} kvittering${nk > 1 ? "er" : ""}`, spm.length && `${spm.length} spørgsmål fra ${selv() ? "Tallo" : "Othman"}`].filter(Boolean).join(" og "), "Se dem", `data-act="vis-venter"`]);
+    if (forsent.length) ting.push(["roed", `${forsent.length} faktura${forsent.length > 1 ? "er" : ""} er for sent`, `Kunderne skylder dig ${F.kr0(sum(ub, (f) => f.rest))} kr.`, "Se dem", `href="#salg"`]);
+    if (T.udlaeg_skyldig > 0) ting.push(["", `Firmaet skylder dig ${F.kr0(T.udlaeg_skyldig)} kr.`, "Du har lagt ud med egne penge", "Se hvordan", udl.length ? `data-act="aabn-u" data-id="${udl[0].id}"` : ""]);
     // Skat undervejs (Othman 20. okt): kun en paamindelse, ingen skatteberegning. Kun personligt ejede virksomheder.
     const md = +IDAG.slice(5, 7);
     if (!erSelskab() && md >= 4 && !skjult(`forskud-${IDAG.slice(0, 4)}`) && over > 0) {
       const afv = overLy > 0 ? pct(over, overLy) : null;
-      if (afv === null || Math.abs(afv) >= 25) ting.push(["accent", afv === null ? "Passer din forskudsopgørelse?" : `Dit overskud er ${Math.abs(afv)} % ${afv > 0 ? "højere" : "lavere"} end sidste år`,
-        "Ret den på skat.dk, så du undgår restskat", "Til skat.dk", `href="https://skat.dk/borger/forskudsopgoerelse" target="_blank" rel="noopener" data-skjul="forskud-${IDAG.slice(0, 4)}"`, null]);
+      if (afv === null || Math.abs(afv) >= 25) ting.push(["", afv === null ? "Passer din forskudsopgørelse?" : `Dit overskud er ${Math.abs(afv)} % ${afv > 0 ? "højere" : "lavere"} end sidste år`,
+        "Ret den på skat.dk, så du undgår restskat", "Til skat.dk", `href="https://skat.dk/borger/forskudsopgoerelse" target="_blank" rel="noopener" data-skjul="forskud-${IDAG.slice(0, 4)}"`]);
     }
-    const linjer = ting.map(([farve, titel, under, knap, attr, filter], i) => `<div class="tl" ${filter ? `data-act="filter-gaa" data-f="${filter}" role="button" tabindex="0"` : ""}><div class="t"><b>${titel}</b>${under ? `<small>${under}</small>` : ""}</div>${attr.startsWith("href") ? `<a class="knap lille ${i ? "" : "p"}" ${attr}>${knap}</a>` : `<button class="knap lille ${i ? "" : "p"}" ${attr}>${knap}</button>`}</div>`).join("");
+    if (S.mitid?.dansk && !S.mitid.bekraeftet) ting.push(["", "Bekræft virksomheden med MitID", `Kræves fra ${F.datoLang(S.mitid.fra)}. Det tager et minut`, "Bekræft", `data-act="mitid" data-f="cvr"`]);
+    const linjer = ting.map(([k, titel, under, knap, attr]) => `<div class="td ${k}"><div class="t"><b>${titel}</b>${under ? `<small>${under}</small>` : ""}</div>${!attr ? "" : attr.startsWith("href") ? `<a class="td-link" ${attr}>${knap}</a>` : `<button class="td-link" ${attr}>${knap}</button>`}</div>`).join("");
     let tilbud = "";
     if (S.nh?.status === "ikke_tilmeldt") {
       if (!S.nh.besked_vist) { S.nh.besked_vist = new Date().toISOString(); rpc("nemhandel_besked_vist", { p_virksomhed: VID }).catch(() => {}); }
       const dag = plusDage(S.nh.besked_vist.slice(0, 10), 28), varsel = IDAG >= "2027-03-01" ? ` Vi tilmelder dig ${F.datoLang(dag < "2027-03-01" ? "2027-03-01" : dag)}, hvis du ikke siger nej.` : "";
-      tilbud = `<div class="tl"><div class="t"><b>Få regninger direkte ind</b><small>Gratis via Nemhandel.${varsel}</small></div>
+      tilbud = `<div class="td"><div class="t"><b>Få regninger direkte ind</b><small>Gratis via Nemhandel.${varsel}</small></div>
         <span class="raekke"><button class="knap lille" data-act="nh-nej">Nej tak</button><button class="knap lille" data-act="nh-ja">Ja tak</button></span></div>`;
     }
     // Kom godt i gang (evidens: alle vaerktoejer starter med opsaetning, men ingen har en samlet tjekliste): de foerste 60 dage.
@@ -114,20 +118,18 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261024005715";
     const komIGang = igang ? `<div class="kom-i-gang"><div class="kh"><b>Kom godt i gang</b><span class="not">${trin.filter(([, ok]) => ok).length} af ${trin.length}</span>
         <button class="ikonknap" data-act="skjul" data-n="kom-i-gang" aria-label="Skjul">${IC.luk}</button></div>
       ${trin.map(([t, ok, attr]) => `<div class="trin ${ok ? "ok" : ""}"><span class="flueben">${ok ? IC.check : ""}</span><span class="t">${t}</span>${ok ? "" : attr.startsWith("href") ? `<a class="knap lille" ${attr}>Gør det</a>` : `<button class="knap lille" ${attr}>${attr.includes("moms-passer") ? "Det passer" : "Gør det"}</button>`}</div>`).join("")}</div>` : "";
-    const tilDig = `<section class="kort tildig ${ting.length || igang ? "har" : ""}"><div class="kort-hoved"><h2>Til dig</h2></div>${komIGang}
-      ${linjer || (igang ? "" : `<div class="altok"><span class="ok">${IC.check}</span><b>Alt er på plads</b></div>`)}${tilbud}</section>`;
-    // Dine penge: hvert tal ét sted, med vej videre.
-    const pl = (href, navn, bel, under) => `<a class="pl" href="#${href}"><div class="t"><b>${navn}</b><span class="bel">${bel}</span>${under ? `<small>${under}</small>` : ""}</div><span class="pil" aria-hidden="true">›</span></a>`;
-    const penge = `<section class="kort penge"><div class="kort-hoved"><h2>Dine penge</h2></div>
-      ${pl("rapporter", "På kontoen", F.kr0(total()) + " kr.", T.transaktioner.length ? "" : "Banken er ikke koblet til endnu")}
-      ${pl("salg", "Kunder skylder dig", F.kr0(sum(ub, (f) => f.rest)) + " kr.", ub.length ? `${ub.length} faktura${ub.length > 1 ? "er" : ""}${forsent.length ? ` · <span class="roed-tekst">${forsent.length} for sent</span>` : ""}` : "")}
-      ${pl("moms", `Moms for ${kv.navn.replace(/ \d{4}$/, "")}`, F.kr0(kv.at_betale) + " kr.", `Senest ${F.datoLang(kv.frist)}`)}
-      ${pl("moms", "Kan hæves efter moms", F.kr0(Math.max(0, total() - momsSkyldig())) + " kr.", erSelskab() ? "Hæves som løn eller udbytte" : "Læg til side til B-skat")}</section>`;
-    // Sådan går det: årets overskud og ændringen mod sidste år. Grafen bor under Tal.
-    const delta = overLy ? `${fortegn(pct(over, overLy))} mod sidste år` : "Dit første år hos Tallo";
-    const gaar = `<a class="kort gaar" href="#rapporter"><div class="kort-hoved"><h2>Overskud i år</h2><span class="pil" aria-hidden="true">›</span></div>
-      <div class="tal-stort">${F.kr0(over)}<small>kr.</small></div><div class="not">${delta}</div></a>`;
-    return `<div class="overblik">${tilDig}${penge}${gaar}</div>`;
+    const tilDig = `<section class="til-dig" aria-label="Til dig"><h2 class="etiket">Til dig</h2>${komIGang}
+      ${linjer || tilbud || igang ? linjer + tilbud : `<div class="altok"><span class="ok">${IC.check}</span><b>Alt er på plads</b></div>`}</section>`;
+    // Pengene: ét tal og én sætning. Det, der skal til momsen, og det, der kan hæves, står i samme sætning.
+    const tot = total(), skyld = momsSkyldig(), haev = Math.max(0, tot - skyld), b = (n) => `<b class="tal">${F.kr0(n)} kr.</b>`;
+    const tilMoms = skyld > 0 ? `Heraf skal <a href="#moms">${b(skyld)}</a> bruges til momsen${skyld === kv.at_betale ? ` for ${E(kv.navn.replace(/ \d{4}$/, ""))}, senest ${F.datoLang(kv.frist)}.` : `. Næste frist er ${F.datoLang(kv.frist)}.`} ` : "";
+    const rest = erSelskab() ? `Resten, ${b(haev)}, kan du hæve som løn eller udbytte.` : `Resten, ${b(haev)}, kan du bruge. Husk at lægge til side til B-skat.`;
+    const penge = `<section class="forside-penge"><h2 class="etiket">På kontoen</h2><div class="stort tal">${F.kr0(tot)}<small>kr.</small></div>
+      <p>${T.transaktioner.length || tot ? tilMoms + (skyld > 0 ? rest : rest.replace(/^Resten, /, "Det hele, ")) : "Banken er ikke koblet til endnu. Når den er, står saldoen her."}</p></section>`;
+    return `<div class="forside-top">${penge}${tilDig}</div>
+      <section class="betalinger" id="betalinger" aria-label="Betalinger"><div class="tabel-top"><h2>Betalinger</h2><div class="filtre" role="group" aria-label="Vis">${filtreKnapper()}</div>
+        <label class="soeg">${IC.soeg}<input id="q" placeholder="Søg" value="${E(S.q)}" autocomplete="off"></label></div>
+      <div id="trliste">${trListe()}</div></section>`;
   }
 
   // ------------------------------------------------------------ godkend (pakken 'selv') ----
@@ -163,41 +165,48 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261024005715";
       }).join("")}</div>`;
   }
 
-  // Betalinger: dato, hvad og kategori, status kun naar der mangler noget, beloeb. Kilden vises kun, naar der er flere.
-  function trTabel(liste, fod = true) {
+  // Betalinger: grupperet (det, der venter på dig, først, så måned for måned). Dato, hvad, kategori, status kun dér, hvor
+  // noget mangler, og beløb. Kilden vises kun, naar der er flere.
+  const venterT = (t) => t.status === "mangler_kvittering" || t.status === "spoergsmal" || (selv() && t.status === "behandles");
+  const gruppe = (t) => (venterT(t) ? "venter" : t.dato.slice(0, 7));
+  const gruppeNavn = (g) => (g === "venter" ? "Venter på dig" : F.maaned(+g.slice(5, 7)).replace(/^./, (c) => c.toUpperCase()) + " " + g.slice(0, 4));
+  function trTabel(liste, antal = new Map()) {
     const flereKilder = T.konti.length > 1 || T.transaktioner.some((t) => t.kilde && t.kilde !== "bank");
+    let g = null;
     const rk = liste.map((t) => {
-      const k = KILDE[t.kilde] || KILDE.bank, [pc, pt] = ST[t.status], bogfoert = t.status === "bogfoert";
-      const venter = t.status === "mangler_kvittering" || t.status === "spoergsmal" || (selv() && t.status === "behandles");
-      const kilde = flereKilder ? ` · ${E(k[2])}${T.konti.length > 1 ? " " + E(T.konti.find((x) => x.id === t.konto)?.navn || "") : ""}` : "";
-      return `<div class="r rk" role="button" tabindex="0" data-act="aabn-t" data-id="${t.id}"><div class="c-dato tal">${F.dato(t.dato)}</div>
-        <div class="tekst c-tekst"><b>${E(t.tekst)}</b><small>${venter ? `<span class="kun-mobil st-tekst">${pt} · </span>` : ""}${E(bogfoert ? t.kat : t.kat === "Ukendt" || /ikke bogført/i.test(t.kat) ? "" : "Forslag: " + t.kat)}${kilde}<span class="kun-mobil">${bogfoert || !/ikke bogført|Ukendt/i.test(t.kat) ? " · " : ""}${F.datoKort(t.dato)}</span></small></div>
-        <div class="c-st kun-pc">${venter ? pille(pc, pt) : ""}</div><div class="b c-bel tal ${t.beloeb > 0 ? "pos" : "neg"}">${t.beloeb > 0 ? "+" : ""}${F.kr(t.beloeb)}</div></div>`;
+      const k = KILDE[t.kilde] || KILDE.bank, pt = ST[t.status][1], bogfoert = t.status === "bogfoert", venter = venterT(t);
+      const kat = bogfoert ? E(t.kat) : /ikke bogført|ukendt/i.test(t.kat) ? "" : "Forslag: " + E(t.kat);
+      const kilde = flereKilder ? `${E(k[2])}${T.konti.length > 1 ? " " + E(T.konti.find((x) => x.id === t.konto)?.navn || "") : ""}` : "";
+      const under = [t.status === "spoergsmal" && t.spm ? E(t.spm) : "", kilde].filter(Boolean).join(" · ");
+      const ny = gruppe(t), hoved = ny !== g ? `<div class="r gr">${gruppeNavn(ny)}<span class="ant">${antal.get(ny) || ""}</span></div>` : "";
+      g = ny;
+      return `${hoved}<div class="r rk" role="button" tabindex="0" data-act="aabn-t" data-id="${t.id}"><div class="c-dato tal">${F.datoKort(t.dato)}</div>
+        <div class="tekst c-tekst"><b>${E(t.tekst)}</b>${under ? `<small>${under}</small>` : ""}<small class="kun-mobil">${F.datoKort(t.dato)}${kat ? " · " + kat : ""}</small></div>
+        <div class="c-kat ${bogfoert ? "" : "forslag"}">${kat}</div><div class="c-st">${venter ? pille("handling", pt) : t.status === "behandles" ? `<span class="stille">${pt}</span>` : ""}</div>
+        <div class="b c-bel tal">${t.beloeb > 0 ? "+" : ""}${F.kr(t.beloeb)}</div></div>`;
     }).join("");
-    return `<div class="tabel"><div class="r rk h"><div class="c-dato">Dato</div><div class="c-tekst">Hvad</div><div class="c-st"></div><div class="b c-bel">Kr.</div></div>${rk || '<div class="tom">Ingen betalinger passer til søgningen.</div>'}</div>`;
+    return `<div class="tabel trtabel"><div class="r rk h"><div class="c-dato">Dato</div><div class="c-tekst">Hvad</div><div class="c-kat">Kategori</div><div class="c-st"></div><div class="b c-bel">Kr.</div></div>${rk || '<div class="tom">Ingen betalinger passer til søgningen.</div>'}</div>`;
   }
 
   function filtreret() {
     let l = TR();
     if (S.filter === "udgifter") l = l.filter((t) => t.beloeb < 0);
-    else if (S.filter === "venter") l = l.filter((t) => t.status === "mangler_kvittering" || t.status === "spoergsmal" || (selv() && t.status === "behandles"));
+    else if (S.filter === "venter") l = l.filter(venterT);
     else if (S.filter !== "alle") l = l.filter((t) => t.status === S.filter);
     if (S.q) { const q = S.q.toLowerCase(); l = l.filter((t) => `${t.tekst} ${t.kat} ${Math.abs(t.beloeb)} ${t.bilag || ""}`.toLowerCase().includes(q)); }
-    return l;
+    return l.sort((a, b) => venterT(b) - venterT(a));   // stabil sortering: datoordenen fra TR() bevares i hver gruppe
   }
   function trListe() {
-    const l = filtreret(), vis = l.slice(0, S.sideN);
-    return trTabel(vis) + `<div class="tabelfod"><span>${vis.length} af ${l.length}</span>${vis.length < l.length ? '<button class="knap lille" data-act="flere">Vis flere</button>' : ""}</div>`;
+    if (!T.transaktioner.length) return '<div class="tom">Når banken er koblet til, står dine betalinger her.</div>';
+    const l = filtreret(), vis = l.slice(0, S.sideN), antal = new Map();
+    l.forEach((t) => antal.set(gruppe(t), (antal.get(gruppe(t)) || 0) + 1));
+    return trTabel(vis, antal) + `<div class="tabelfod"><span>${vis.length} af ${l.length}</span>${vis.length < l.length ? '<button class="knap lille" data-act="flere">Vis flere</button>' : ""}</div>`;
   }
-  function transaktioner() {
-    const al = T.transaktioner, n = (s) => al.filter((t) => t.status === s).length;
-    return `<div class="kort tabeldel"><div class="tabel-top"><label class="soeg">${IC.soeg}<input id="q" placeholder="Søg" value="${E(S.q)}" autocomplete="off"></label>
-      <div class="filtre" role="group" aria-label="Vis">${[["alle", "Alle"], ["venter", "Venter på dig", n("mangler_kvittering") + n("spoergsmal") + (selv() ? n("behandles") : 0)], ["udgifter", "Udgifter"]]
-        .map(([k, t, c]) => `<button data-act="filter" data-f="${k}" aria-pressed="${S.filter === k}">${t}${c ? `<b>${c}</b>` : ""}</button>`).join("")}</div></div>
-      <div id="trliste">${trListe()}</div></div>`;
-  }
+  // Et filter fra en anden skærm (fx Moms: "mangler kvittering") vises som sin egen knap, så man kan se, hvorfor listen er kort.
+  const filtreKnapper = () => [["alle", "Alle"], ["venter", "Venter på dig", T.transaktioner.filter(venterT).length], ["udgifter", "Udgifter"],
+    ...(ST[S.filter] ? [[S.filter, ST[S.filter][1]]] : [])]
+    .map(([k, t, c]) => `<button data-act="filter" data-f="${k}" aria-pressed="${S.filter === k}">${t}${c ? `<b>${c}</b>` : ""}</button>`).join("");
 
-  // Fakturaer: én statuslinje i stedet for talkort; filtre i stedet for en fane med betalinger.
   function salg() {
     const fl = [...T.fakturaer].sort((a, b) => b.nr - a.nr), ub = ubetalte(), forsent = ub.filter((f) => f.forfald < IDAG), betalt = T.fakturaer.filter((f) => f.status === "betalt" && String(f.dato).startsWith(IDAG.slice(0, 4)));
     const tabs = `<div class="faner" role="tablist">${[["fakturaer", "Fakturaer"], ["tilbud", "Tilbud"], ["abonnementer", "Faste"], ["kunder", "Kunder"]].map(([k, t]) => `<button role="tab" aria-selected="${S.salgTab === k}" data-act="salgtab" data-t="${k}">${t}</button>`).join("")}</div>`;
@@ -332,8 +341,8 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261024005715";
     const tabs = [["firma", "Firma"], ["fakturaer", "Fakturaer"], ["forbindelser", "Forbindelser"], ...(selv() ? [["konti", "Kategorier"]] : [])];
     const f = (l, v) => `<div class="felt"><label>${l}</label><div class="vaerdi">${E(v) || "–"}</div></div>`;
     const ind = {
-      firma: `<div class="gitter g2"><div class="stak"><div class="kort"><div class="kort-hoved"><h2>Firmaoplysninger</h2></div><div class="gitter g2">${f("Navn", V.navn)}${f("CVR", V.cvr)}${f("Adresse", V.adresse)}${f("Bilagsadresse", V.bilagsadresse)}${f("Moms afregnes", (MOMSPERIODE[V.momsperiode] || "").replace(/^./, (c) => c.toUpperCase()))}</div>
-        <button class="knap mt-3" data-act="skriv">Ret noget</button></div>${konto()}</div><div class="stak">${abonnement()}</div></div>`,
+      firma: `<div class="gitter g2"><div class="stak"><div class="kort"><div class="kort-hoved"><h2>Firmaoplysninger</h2></div><div class="gitter g2">${f("Navn", V.navn)}${f("CVR", V.cvr)}${f("Adresse", V.adresse)}${f("Bilagsadresse", V.bilagsadresse)}${f("Moms afregnes", (MOMSPERIODE[V.momsperiode] || "").replace(/^./, (c) => c.toUpperCase()))}${S.mitid?.dansk ? f("Bekræftet med MitID", S.mitid.bekraeftet ? F.datoLang(String(S.mitid.bekraeftet).slice(0, 10)) : "Ikke endnu") : ""}</div>
+        <div class="raekke mt-3"><button class="knap" data-act="skriv">Ret noget</button>${S.mitid?.dansk && !S.mitid.bekraeftet ? '<button class="knap" data-act="mitid" data-f="cvr">Bekræft med MitID</button>' : ""}</div></div>${konto()}</div><div class="stak">${abonnement()}</div></div>`,
       fakturaer: `<div class="gitter g2"><div class="kort"><div class="kort-hoved"><h2>Udseende</h2></div><div class="raekke"><span class="flogo stor" style="background:${E(V.farve)}">${initialer(V.kort)}</span><b>Logo og farve på fakturaen</b></div>
           <div class="farver mt-2">${["#c98a3b", "#4b3aa6", "#1f7a4a", "#141414", "#2b55d6"].map((c, i) => `<button class="farve" data-act="farve" data-farve="${c}" style="background:${c}" aria-label="Farve ${i + 1}" aria-pressed="${V.farve === c}"></button>`).join("")}</div></div>
         <div class="kort"><div class="kort-hoved"><h2>Betaling og rykkere</h2></div><div class="liste">
@@ -472,30 +481,32 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261024005715";
   }
   // ---------------------------------------------------------------- skal/rendering ----
   const n_aabne = () => aabne().length;
-  const hilsen = () => (S.route === "overblik" && V.ejer ? `Hej ${V.ejer}` : TITEL[S.route]);
+  const SIDE = "tallo-app-side-smal";
+  const hilsen = () => { if (S.route !== "overblik" || !V.ejer) return TITEL[S.route]; const h = new Date().getHours(); return `${h < 10 ? "God morgen" : h < 18 ? "Goddag" : "God aften"}, ${V.ejer}`; };
   function skal(indhold) {
-    const akt = S.route === "overblik" || S.route === "transaktioner" ? `<button class="knap p kun-pc" data-act="scan">${IC.upload} Send bilag</button>`
+    const akt = S.route === "overblik" ? `<button class="knap p kun-pc" data-act="scan">${IC.upload} Send bilag</button>`
       : S.route === "rapporter" ? `<select class="inp auto" id="rapp" aria-label="Periode">${Object.entries(perioder()).map(([k, p]) => `<option value="${k}" ${k === S.rapP ? "selected" : ""}>${p[0]}</option>`).join("")}</select>`
       : S.route === "salg" ? ({ tilbud: `<button class="knap p" data-act="ny-tb">${IC.plus} Nyt tilbud</button>`, abonnementer: `<button class="knap p" data-act="nyt-abon">${IC.plus} Ny fast faktura</button>`,
         kunder: `<button class="knap p" data-act="ny-kunde">${IC.plus} Ny kunde</button>` }[S.salgTab] || `<button class="knap p" data-act="ny-f">${IC.plus} Ny faktura</button>`) : "";
-    const li = (r, n) => `<a href="#${r}" ${S.route === r ? 'aria-current="page"' : ""}>${IC[r === "konto" ? "konto" : r] || IC.check}<span>${n}</span>${r === "transaktioner" && !selv() && n_aabne() ? `<span class="tael">${n_aabne()}</span>` : ""}${r === "godkend" && (S.ind || []).length ? `<span class="tael">${S.ind.length}</span>` : ""}</a>`;
+    const li = (r, n) => `<a href="#${r}" title="${n}" ${S.route === r ? 'aria-current="page"' : ""}>${IC[r === "konto" ? "konto" : r] || IC.check}<span>${n}</span>${r === "overblik" && !selv() && n_aabne() ? `<span class="tael">${n_aabne()}</span>` : ""}${r === "godkend" && (S.ind || []).length ? `<span class="tael">${S.ind.length}</span>` : ""}</a>`;
     const mere = MERE().map(([r]) => r);
     const logo = (stor) => `<span class="monogram ${stor ? "stor" : ""}">${initialer(V.kort)}</span>`;
-    return `<div class="app"><aside class="side"><button class="firma" data-act="skift">${logo(true)}<span class="fyld"><b>${E(V.kort)}</b><small>CVR ${E(V.cvr)}</small></span>${FIRMAER.length > 1 ? IC.ned.replace("<svg", '<svg width="16" height="16"') : ""}</button>
+    return `<div class="app ${F.sidebar.smal(SIDE) ? "smal" : ""}"><aside class="side"><div class="side-top"><button class="firma" data-act="skift" title="${E(V.kort)}">${logo(true)}<span class="fyld side-tekst"><b>${E(V.kort)}</b><small>CVR ${E(V.cvr)}</small></span>${FIRMAER.length > 1 ? IC.ned.replace("<svg", '<svg class="side-tekst" width="16" height="16"') : ""}</button>${F.sidebar.knap(SIDE)}</div>
       <nav aria-label="Hovedmenu">${(selv() ? [["godkend", "Godkend"], ...NAV] : NAV).map(([r, n]) => li(r, n)).join("")}</nav>
-      <button class="bogholder-raekke" data-act="skriv"><span class="monogram">${selv() ? "T" : "OA"}</span><span>Skriv til ${selv() ? "Tallo" : "Othman"}</span></button>
+      <button class="bogholder-raekke" data-act="skriv" title="Skriv til ${selv() ? "Tallo" : "Othman"}"><span class="monogram">${selv() ? "T" : "OA"}</span><span class="side-tekst">Skriv til ${selv() ? "Tallo" : "Othman"}</span></button>
       <div class="undermenu">${UNDER.map(([r, n]) => li(r, n)).join("")}</div></aside>
       <main class="main" id="main"><header class="top"><button class="mob-firma" data-act="skift" aria-label="Virksomhed">${logo(false)}</button><h1>${E(hilsen())}</h1><div class="hoejre-side">${akt}</div></header><div class="sider" id="sider">${V.aaben ? "" : `<p class="banner">Kontoen åbner, når programmet er registreret. Du betaler intet før.</p>`}${indhold}</div></main></div>
-      <nav class="bundnav" aria-label="Menu"><a href="#overblik" ${S.route === "overblik" ? 'aria-current="page"' : ""}>${IC.overblik}<span>Overblik</span></a>${selv()
+      <nav class="bundnav" aria-label="Menu"><a href="#overblik" ${S.route === "overblik" ? 'aria-current="page"' : ""}>${IC.overblik}<span>Overblik</span>${!selv() && n_aabne() ? `<i class="tael">${n_aabne()}</i>` : ""}</a>${selv()
         ? `<a href="#godkend" ${S.route === "godkend" ? 'aria-current="page"' : ""}>${IC.check}<span>Godkend</span>${(S.ind || []).length ? `<i class="tael">${S.ind.length}</i>` : ""}</a>`
-        : `<a href="#transaktioner" ${S.route === "transaktioner" ? 'aria-current="page"' : ""}>${IC.transaktioner}<span>Betalinger</span>${n_aabne() ? `<i class="tael">${n_aabne()}</i>` : ""}</a>`}
-      <button class="fab" data-act="scan" aria-label="Send bilag">${IC.scan}</button><a href="#salg" ${S.route === "salg" ? 'aria-current="page"' : ""}>${IC.salg}<span>Fakturaer</span></a><button data-act="mere" class="${mere.includes(S.route) ? "aktiv" : ""}">${IC.mere}<span>Mere</span></button></nav>`;
+        : `<a href="#salg" ${S.route === "salg" ? 'aria-current="page"' : ""}>${IC.salg}<span>Fakturaer</span></a>`}
+      <button class="fab" data-act="scan" aria-label="Send bilag">${IC.scan}</button>${selv() ? `<a href="#salg" ${S.route === "salg" ? 'aria-current="page"' : ""}>${IC.salg}<span>Fakturaer</span></a>` : `<a href="#moms" ${S.route === "moms" ? 'aria-current="page"' : ""}>${IC.moms}<span>Moms</span></a>`}<button data-act="mere" class="${mere.includes(S.route) ? "aktiv" : ""}">${IC.mere}<span>Mere</span></button></nav>`;
   }
   // Mere-arket paa telefonen: det, der ikke er i bundmenuen, plus hjaelp.
-  const MERE = () => [...(selv() ? [["transaktioner", "Betalinger"]] : []), ["moms", "Moms"], ["rapporter", "Tal"], ["indstillinger", "Indstillinger"]];
-  const VIEWS = { godkend, overblik, transaktioner, salg, rapporter, moms, indstillinger };
+  const MERE = () => [...(selv() ? [["moms", "Moms"]] : []), ["rapporter", "Tal"], ["indstillinger", "Indstillinger"]];
+  const VIEWS = { godkend, overblik, salg, rapporter, moms, indstillinger };
   function render() {
     if (!T) return;
+    if (S.mitid?.kraeves) return mitidSide();   // fra 1. marts 2027: intet andet, før virksomheden er bekræftet
     document.getElementById("app").innerHTML = skal(VIEWS[S.route]());
     document.title = hilsen() + " · Tallo";
     let h = "";
@@ -507,7 +518,7 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261024005715";
       h += `<div class="slor" data-act="luk"></div><aside class="skuffe ${bred ? "bred" : ""}" role="dialog" aria-modal="true" aria-label="Detaljer">${indh}</aside>`;
     }
     if (S.mere) {
-      h += `<div class="slor" data-act="luk"></div><div class="ark" role="dialog" aria-label="Mere"><div class="greb"></div>${MERE().map(([r, n]) => `<a href="#${r}" data-act="luk">${IC[r] || IC.check}<span>${n}</span>${r === "transaktioner" && n_aabne() ? `<span class="tael">${n_aabne()}</span>` : ""}</a>`).join("")}
+      h += `<div class="slor" data-act="luk"></div><div class="ark" role="dialog" aria-label="Mere"><div class="greb"></div>${MERE().map(([r, n]) => `<a href="#${r}" data-act="luk">${IC[r] || IC.check}<span>${n}</span></a>`).join("")}
         <button class="li-knap" data-act="skriv">${IC.chat}<span>${selv() ? "Skriv til Tallo" : "Skriv til Othman"}</span></button></div>`;
     }
     if (S.scan) h += scanHtml();
@@ -518,6 +529,7 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261024005715";
     (S.upload || []).forEach((u) => { u.vist = true; });
     document.body.classList.toggle("har-lag", !!(S.drawer || S.scan || S.mere));
     const sk = lag.querySelector(".skuffe"); if (sk && !samme) { const f = sk.querySelector("textarea, input, select, button"); if (f && !S.keepFocus) f.focus(); }
+    if (S.tilListe && S.route === "overblik") { S.tilListe = false; requestAnimationFrame(() => document.getElementById("betalinger")?.scrollIntoView({ behavior: STILLE() ? "auto" : "smooth", block: "start" })); }
   }
   function skuffeBesked() {
     return `<div class="sh"><h2>Skriv til ${selv() ? "Tallo" : "Othman"}</h2><button class="ikonknap" data-act="luk" aria-label="Luk">${IC.luk}</button></div><div class="sk">
@@ -551,7 +563,7 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261024005715";
     V = T.virksomhed; IDAG = T.idag;
     if (!V.ejer) V.ejer = BRUGER.navn || "";
     // Kaldene er uafhaengige af hinanden og koeres samtidig (foer: et ad gangen, og siden var hvid imens).
-    const [bank, udkast, udtraek, nh, pk, skiftet, vtm] = await Promise.all([
+    const [bank, udkast, udtraek, nh, pk, skiftet, vtm, mitid] = await Promise.all([
       rpc("bankforbindelse_status", { p_virksomhed: VID }).catch(() => []),
       rpc("kunde_udkast", { p_virksomhed: VID }).catch(() => []),
       sb.from("udtraek_bestilling").select("id, type, fra, til, status, sti, bestilt_tid").eq("virksomhed_id", VID)
@@ -559,7 +571,9 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261024005715";
       sb.from("nemhandel_tilmelding").select("status, besked_vist").eq("virksomhed_id", VID).maybeSingle(),
       sb.from("virksomhed").select("pakke, aaben, momsperiode, oprettet").eq("id", VID).single(),
       sb.from("pakkeskift").select("ny_pakke, fra").eq("virksomhed_id", VID).maybeSingle(),
-      sb.from("varetype").select("id, momskode").eq("virksomhed_id", VID)]);
+      sb.from("varetype").select("id, momskode").eq("virksomhed_id", VID),
+      rpc("mitid_status", { p_virksomhed: VID }).catch(() => null)]);
+    S.mitid = mitid;
     S.bank = bank; S.udkast = udkast; S.udtraek = udtraek.data || []; S.pakkeskift = skiftet.data || null;
     const mk = Object.fromEntries((vtm.data || []).map((x) => [x.id, x.momskode]));
     T.varetyper.forEach((v) => { v.moms = mk[v.id] !== "uden_moms"; });
@@ -654,7 +668,33 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261024005715";
       document.getElementById("app").innerHTML = `<main class="login"><div class="kort"><h1>Noget gik galt</h1><p class="not">${E(err.message)}</p><button class="knap" data-act="genindlaes">Prøv igen</button></div></main>`;
       return;
     }
+    mitidTilbage();
+    if (S.mitid?.kraeves) return mitidSide();
     rute();
+  }
+
+  // ------------------------------------------------------------- MitID (BEK 97 § 5 a og b) ----
+  // Fra 1. marts 2027 bekræfter kunden én gang med MitID Erhverv, at hun hører til virksomheden. Før det er det frivilligt.
+  const MITID_SVAR = { bekraeftet: "Virksomheden er bekræftet med MitID", cvr_passer_ikke: "MitID-loginet hørte til et andet CVR-nummer. Prøv igen med virksomhedens MitID Erhverv.",
+    afbrudt: "Du afbrød MitID. Prøv igen, når du er klar.", udloebet: "Linket var udløbet. Prøv igen.", fejl: "MitID gik ikke igennem. Prøv igen om lidt." };
+  function mitidSide() {
+    document.getElementById("lag").innerHTML = "";
+    document.getElementById("app").innerHTML = `<main class="login"><div class="kort"><div class="logo-ord">tallo</div><h1>Bekræft din virksomhed</h1>
+      <p class="not">Før du går videre, skal du bekræfte med MitID Erhverv, at du hører til ${E(V.navn)} (CVR ${E(V.cvr)}). Loven kræver det af alle regnskabsprogrammer, og det sker kun én gang.</p>
+      <button class="knap p fuld-bredde mt-3" data-act="mitid" data-f="cvr">Bekræft med MitID</button>
+      <p class="lille-tekst mt-3">Vi gemmer, at det er sket, hvornår og dit navn. Aldrig dit CPR-nummer.${FIRMAER.length > 1 ? ' <a href="#" data-act="skift" class="link">Skift virksomhed</a>.' : ""} <a href="#" data-act="logud" class="link">Log ud</a></p></div></main>`;
+  }
+  // Tilbage fra MitID (#mitid=...): vis, hvordan det gik, og gå til forsiden.
+  function mitidTilbage() {
+    const svar = location.hash.match(/^#mitid=(\w+)/)?.[1];
+    if (!svar) return;
+    history.replaceState(null, "", location.pathname + "#overblik");
+    setTimeout(() => F.toast(MITID_SVAR[svar] || MITID_SVAR.fejl), 300);
+  }
+  async function mitidStart(formaal = "cvr") {
+    const { data, error } = await sb.functions.invoke("mitid/start", { body: { virksomhed: VID, formaal, tilbage: location.origin + location.pathname } });
+    if (error || !data?.url) return F.toast(data?.fejl || "MitID kan ikke startes lige nu. Prøv igen om lidt.");
+    location.href = data.url;
   }
 
   // ------------------------------------------------------------- haendelser ----
@@ -906,8 +946,10 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261024005715";
     maal(S.route, el.dataset.t ? `${a}-${el.dataset.t}` : a);
     if (a === "luk") { if (el.tagName === "A") { S.mere = false; S.drawer = null; render(); return; } return luk(); }
     if (a === "aabn-t") return aabn({ type: "t", id });
+    if (a === "mitid") { e.preventDefault(); return mitidStart(el.dataset.f); }
     if (a === "aabn-f") return aabn({ type: "f", nr: +el.dataset.nr });
     if (a === "skriv") return aabn({ type: "besked" });
+    if (a === "side-smal") return F.sidebar.skift(SIDE);
     if (a === "ny-f" || a === "ny-tb" || a === "nyt-abon") {
       if (!T.varetyper.length) { S.drawer = { type: "vare" }; F.toast("Opret først en vare eller ydelse, du sælger"); return render(); }
       const vt = T.varetyper[0];
@@ -922,7 +964,8 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261024005715";
     if (a === "aabn-u") return aabn({ type: "u", id });
     if (a === "ny-kunde") { e.preventDefault(); S.nyKunde = {}; return aabn({ type: "kunde" }); }
     if (a === "egne") { S.egne = !S.egne; return render(); }
-    if (a === "filter-gaa") { if (e.target.closest("button")) return; S.filter = el.dataset.f; S.sideN = 30; if (location.hash === "#transaktioner") return render(); location.hash = "transaktioner"; return; }
+    if (a === "filter-gaa" || a === "vis-venter") { if (el.tagName !== "BUTTON" && e.target.closest("button")) return; S.filter = a === "vis-venter" ? "venter" : el.dataset.f; S.sideN = 30; S.tilListe = true;
+      if (S.route === "overblik") return render(); location.hash = "overblik"; return; }
     if (a === "scan") {
       S.drawer = null; S.mere = false; S.scan = true; S.upload = []; render();
       // Kvittering for det, der er sendt: de seneste bilag (anmeldelserne: "Fik jeg nu indsendt det bilag?")
@@ -951,6 +994,7 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261024005715";
   });
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && (S.drawer || S.mere || S.scan)) return luk();
+    if (e.key === "[" && !e.target.matches("input, textarea, select")) { e.preventDefault(); return F.sidebar.skift(SIDE); }
     if ((e.key === "Enter" || e.key === " ") && e.target.matches('[data-act="filter-gaa"]')) { e.preventDefault(); e.target.click(); return; }
     if ((e.key === "Enter" || e.key === " ") && e.target.matches('[role="button"][tabindex]')) { e.preventDefault(); e.target.click(); }
   });
@@ -1010,9 +1054,10 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261024005715";
     }
   });
   // Gamle adresser (menuen blev samlet 20. okt 2026) sender videre til det nye sted.
-  const VIDERE = { likviditet: ["rapporter"], udgifter: ["transaktioner", () => { S.filter = "udgifter"; }], integrationer: ["indstillinger", () => { S.indTab = "forbindelser"; }],
+  const VIDERE = { likviditet: ["rapporter"], udgifter: ["overblik", () => { S.filter = "udgifter"; }], transaktioner: ["overblik"], integrationer: ["indstillinger", () => { S.indTab = "forbindelser"; }],
     konto: ["indstillinger", () => { S.indTab = "firma"; }] };
   function rute() {
+    mitidTilbage();
     let r = location.hash.slice(1); if (VIDERE[r]) { VIDERE[r][1]?.(); history.replaceState(null, "", "#" + VIDERE[r][0]); r = VIDERE[r][0]; }
     const skift = VIEWS[r] && r !== S.route && T;
     const tegn = () => { if (VIEWS[r]) { S.route = r; S.drawer = null; S.mere = false; window.scrollTo(0, 0); } render(); };

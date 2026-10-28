@@ -1,6 +1,6 @@
 // Bogholderens arbejdsbord paa rigtige data. Én indbakke paa tvaers af kunder, tastaturet foerst. Stille som standard
 // (Othman 22. okt 2026): det, der er i orden, har ingen farve; violet er det, der venter, og roed er fejl. Al logik ligger i databasen; her vises, vaelges og kaldes kun. Login kraever 2-trins (aal2).
-import { DEMO, Fejl, LOKALT, logUd, rpc, sb, session } from "../felles/data.js?v=20261024005715";
+import { DEMO, Fejl, LOKALT, logUd, rpc, sb, session } from "../felles/data.js?v=20261028204504";
 
 const E = F.esc, IC = F.ICON, kr = F.kr;
 const pille = (c, t) => `<span class="pille ${c}">${t}</span>`;
@@ -9,6 +9,7 @@ const S = { route: "indbakke", tab: "alt", sel: 0, rows: [], firmaer: [], konti:
             svar: null, rettet: {}, kunde: null, kundeTab: "overblik", momsKey: null, rap: { v: null, type: "resultat", periode: "aar" }, logV: null, travl: false };
 let BRUGER = null;
 
+const SIDE = "tallo-bord-side-smal";
 const NAV = [["indbakke", "Indbakke", "overblik"], ["efterkontrol", "Efterkontrol", "check"], ["kunder", "Kunder", "salg"], ["regler", "Regler", "integrationer"], ["moms", "Moms", "moms"],
              ["rapporter", "Rapporter", "rapporter"], ["log", "Hændelseslog", "likviditet"], ["indstillinger", "Indstillinger", "indstillinger"]];
 const TITEL = { efterkontrol: "Efterkontrol", indbakke: "Indbakke", kunder: "Kunder", kunde: "Kunde", regler: "Regler", moms: "Momslukning", rapporter: "Rapporter", log: "Hændelseslog", indstillinger: "Indstillinger" };
@@ -473,7 +474,7 @@ function indstillinger() {
   return `${faner}<div class="gitter g2"><div class="kort"><div class="kort-hoved"><h2>Login</h2></div><div class="liste"><div class="li"><div class="t"><b>${E(BRUGER?.mail)}</b><small>2-trins kræves altid. Login udløber efter 12 timer.</small></div></div>
       ${fa.map((f) => `<div class="li"><div class="t"><b>${E(f.friendly_name || "Godkenderapp")}</b><small>Oprettet ${dk(f.created_at)}</small></div></div>`).join("")}</div>
       <div class="handl mt-2"><button class="knap" data-act="logud">Log ud</button></div></div>
-    <div class="kort"><div class="kort-hoved"><h2>Tastaturgenveje</h2><span class="not">Tryk ? for at komme hertil</span></div><div class="genveje-liste"><span><kbd>J</kbd> <kbd>K</kbd></span><span>Op og ned i indbakken</span><span><kbd>↵</kbd></span><span>Godkend</span><span><kbd>E</kbd></span><span>Ret konto</span><span><kbd>S</kbd></span><span>Spørg kunden</span><span><kbd>A</kbd></span><span>Afvis</span><span><kbd>/</kbd></span><span>Søg</span><span><kbd>G</kbd> <kbd>K</kbd></span><span>Gå til kunder</span></div></div></div>`;
+    <div class="kort"><div class="kort-hoved"><h2>Tastaturgenveje</h2><span class="not">Tryk ? for at komme hertil</span></div><div class="genveje-liste"><span><kbd>J</kbd> <kbd>K</kbd></span><span>Op og ned i indbakken</span><span><kbd>↵</kbd></span><span>Godkend</span><span><kbd>E</kbd></span><span>Ret konto</span><span><kbd>S</kbd></span><span>Spørg kunden</span><span><kbd>A</kbd></span><span>Afvis</span><span><kbd>/</kbd></span><span>Søg</span><span><kbd>G</kbd> <kbd>K</kbd></span><span>Gå til kunder</span><span><kbd>[</kbd></span><span>Fold menuen sammen og ud</span></div></div></div>`;
 }
 // Brug af appen (maaling fra 20. okt 2026): hvilke skaerme og knapper kunderne bruger, og hvilke de aldrig bruger,
 // pr. pakke. Kun samlede tal (brug_oversigt); ingen enkelt kunde kan ses.
@@ -502,8 +503,8 @@ const VIEWS = { efterkontrol, indbakke, kunder, kunde, regler, moms, rapporter, 
 function skal(indhold) {
   const n = S.rows.length;
   const ini = (BRUGER?.mail || "?").slice(0, 2).toUpperCase();
-  return `<div class="app"><aside class="side"><div class="brand">tallo <small>bord</small></div><nav aria-label="Hovedmenu">${NAV.map(([r, t, ic]) => `<a href="#${r}" ${S.route === r || (r === "kunder" && S.route === "kunde") ? 'aria-current="page"' : ""}>${IC[ic]}<span>${t}</span>${r === "indbakke" && n ? `<span class="tael">${n}</span>` : ""}</a>`).join("")}</nav>
-    <div class="bruger-kort"><span class="monogram">${E(ini)}</span><div><b>${E(BRUGER?.mail)}</b><small>Bogholder</small></div></div></aside>
+  return `<div class="app ${F.sidebar.smal(SIDE) ? "smal" : ""}"><aside class="side"><div class="side-top"><div class="brand side-tekst">tallo <small>bord</small></div>${F.sidebar.knap(SIDE)}</div><nav aria-label="Hovedmenu">${NAV.map(([r, t, ic]) => `<a href="#${r}" title="${t}" ${S.route === r || (r === "kunder" && S.route === "kunde") ? 'aria-current="page"' : ""}>${IC[ic]}<span>${t}</span>${r === "indbakke" && n ? `<span class="tael">${n}</span>` : ""}</a>`).join("")}</nav>
+    <div class="bruger-kort" title="${E(BRUGER?.mail)}"><span class="monogram">${E(ini)}</span><div class="side-tekst"><b>${E(BRUGER?.mail)}</b><small>Bogholder</small></div></div></aside>
     <main class="main"><header class="top bord"><h1>${S.route === "kunde" ? E(firma(S.kunde?.v).navn || "Kunde") : TITEL[S.route]}</h1><div class="hoejre-side">${S.log?.hel === false ? pille("roed", "Loggen er ændret") : ""}</div></header><div class="sider bord" id="sider">${indhold}</div></main></div>`;
 }
 function render() {
@@ -672,6 +673,7 @@ function download(navn, tekst, type = "text/csv") {
 async function handling(a, el, e) {
   const r = nu();
   if (a === "logud") return logUd();
+  if (a === "side-smal") return F.sidebar.skift(SIDE);
   if (a === "vaelg") { S.sel = +el.dataset.i; S.svar = null; return render(); }
   if (a === "tab") { S.tab = el.dataset.t; S.sel = 0; S.svar = null; return render(); }
   if (a === "godkend") return travlt(() => godkend(r));
@@ -837,6 +839,7 @@ document.addEventListener("keydown", (e) => {
   if (m === "g") { g = Date.now(); return; }
   if (m === "k" && Date.now() - g < 900) { g = 0; location.hash = "kunder"; return; }
   if (e.key === "/") { e.preventDefault(); if (S.route !== "indbakke") location.hash = "indbakke"; setTimeout(() => document.getElementById("soeg")?.focus(), 0); return; }
+  if (e.key === "[") { e.preventDefault(); F.sidebar.skift(SIDE); return; }
   if (e.key === "?") { S.indTab = "konto"; location.hash = "indstillinger"; return; }
   if (S.route !== "indbakke") return;
   const l = liste();

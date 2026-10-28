@@ -33,6 +33,7 @@
     ned: I('<path d="m6 9 6 6 6-6"/>'),
     check: I('<path d="m5 12 5 5 9-10"/>'),
     chat: I('<path d="M21 12a8 8 0 0 1-11.8 7L3 21l2-5.6A8 8 0 1 1 21 12z"/>'),
+    side: I('<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/>'),
   };
 
   window.F = {
@@ -45,6 +46,21 @@
     datoLang: (s) => { const x = d(s); return x.getDate() + ". " + MNL[x.getMonth()] + " " + x.getFullYear(); },
     maaned: (m) => MNL[m - 1],
     maanedKort: (m) => MN[m - 1].replace(".", ""),
+    /** Sidebaren som smal ikonbar (Othman 24. okt 2026). Valget huskes pr. flade (app eller bord). */
+    sidebar: {
+      smal: (k) => { try { return localStorage.getItem(k) === "1"; } catch { return false; } },
+      knap: (k) => { const s = F.sidebar.smal(k); return `<button class="ikonknap side-knap" data-act="side-smal" aria-expanded="${!s}" aria-label="${s ? "Fold menuen ud" : "Fold menuen sammen"}" title="${s ? "Fold menuen ud" : "Fold menuen sammen"} ( [ )">${ICON.side}</button>`; },
+      skift(k) {
+        const app = document.querySelector(".app"); if (!app) return;
+        const ny = !app.classList.contains("smal");
+        app.classList.toggle("smal", ny);
+        try { localStorage.setItem(k, ny ? "1" : "0"); } catch { /* intet */ }
+        document.querySelectorAll('[data-act="side-smal"]').forEach((b) => {
+          const t = ny ? "Fold menuen ud" : "Fold menuen sammen";
+          b.setAttribute("aria-expanded", String(!ny)); b.setAttribute("aria-label", t); b.title = `${t} ( [ )`;
+        });
+      },
+    },
     esc: (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])),
     toast(tekst) {
       document.querySelectorAll(".toast").forEach((t) => t.remove());

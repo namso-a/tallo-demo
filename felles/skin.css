@@ -2,19 +2,21 @@
 @font-face{font-family:"Geist Mono";src:url("../fonts/geist-mono.woff2") format("woff2");font-weight:100 900;font-display:swap}
 
 /* Stille som standard (Othman 22. okt 2026): papir og blæk. Det, der er i orden, har ingen farve. Violet betyder
-   "det venter på dig" og den primære knap; rød betyder "for sent" eller fejl. Ingen grøn, gul eller okker.
-   Skrift: 12 / 14 / 16 / 22 / 28 / 40 px og vægtene 400 / 520 / 600. Det, der svæver, er glas på telefonen. */
+   "det venter på dig" og den primære knap; rød betyder "for sent" eller fejl. Ingen grøn, gul, blå eller okker.
+   Ét udtryk med tallo.dk (24. okt 2026): hvidt lærred, papirfarvet menu og grupper, Geist i vægt 400/500/560/600,
+   to tekstfarver (blæk og dæmpet; --svag kun til ikoner og pladsholdere) og skalaen 13 / 15 / 17 / 20 / 28 / 40 px. */
 :root {
   --bg: #f6f6f3; --kort: #fff; --tekst: #141414; --daempet: #5f5f5b; --svag: #8a8a84;
-  --lineal: #e6e5df; --lineal2: #efeee9; --raekke-hover: #f8f8f5;
+  --lineal: #e2e2dd; --lineal2: #efeee9; --raekke-hover: #f5f5f2;
   --accent: #4b3aa6; --accent-hover: #3a2c88; --accent-tekst: #fff; --accent-svag: #f0eef8; --accent-mid: #d9d4f1;
   --roed: #c4321c; --roed-svag: #fdebe7;
-  --radius: 18px; --radius-lille: 12px; --knap-radius: 999px;
-  --ramme: 0 0 0 1px rgba(20,20,20,.05);
-  --kort-skygge: 0 1px 2px rgba(20,20,20,.04), 0 14px 34px -22px rgba(20,20,20,.22);
-  --display-vaegt: 520; --display-spacing: -.025em;
-  /* bevaegelse: rolig og kort; slaas fra ved prefers-reduced-motion */
-  --let: cubic-bezier(.2, .8, .2, 1); --hurtig: 180ms; --rolig: 260ms;
+  --radius-lille: 14px; --radius: 20px; --radius-stor: 28px; --knap-radius: 999px;
+  --ramme: 0 0 0 1px rgba(20,20,20,.06);
+  --kort-skygge: 0 1px 2px rgba(20,20,20,.03), 0 24px 48px -32px rgba(20,20,20,.18);
+  --t-lille: 13px; --t-tekst: 15px; --t-stor: 17px; --t-h2: 20px; --t-h1: 28px; --t-tal: 40px;
+  --display-vaegt: 500; --display-spacing: -.025em;
+  /* bevaegelse som paa tallo.dk; fjederen kun paa skuffer og ark. Slaas fra ved prefers-reduced-motion */
+  --let: cubic-bezier(.2, .7, .2, 1); --fjeder: cubic-bezier(.3, 1.4, .5, 1); --hurtig: 180ms; --rolig: 280ms;
   /* glas (kun paa det, der svaever) */
   --glas: rgba(250, 250, 248, .78); --glas-tyk: rgba(250, 250, 248, .86);
   --glas-kant: inset 0 1px 0 rgba(255, 255, 255, .95), inset 0 0 0 .5px rgba(255, 255, 255, .7);
