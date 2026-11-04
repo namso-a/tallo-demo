@@ -1,7 +1,7 @@
 // Tallos app til kunden: computer og telefon. Skærmene er de godkendte fra mockuppen (system/design/platform);
 // data kommer fra kunde_data(), og hver handling kalder en funktion i databasen, der selv tjekker adgang og regler.
-import { DEMO, Fejl, LOKALT, logUd, rpc, sb, sendBilag, session, virksomheder } from "../felles/data.js?v=20261028204504";
-import { SUPABASE_URL } from "../felles/config.js?v=20261028204504";
+import { DEMO, Fejl, LOKALT, logUd, rpc, sb, sendBilag, session, virksomheder } from "../felles/data.js?v=20261104201106";
+import { SUPABASE_URL } from "../felles/config.js?v=20261104201106";
 
   let T, V, IDAG, VID, BRUGER, FIRMAER = [];
   const E = F.esc, IC = F.ICON;
@@ -18,6 +18,18 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261028204504";
   const sum = (a, f) => a.reduce((s, x) => s + f(x), 0);
   const pille = (c, t) => `<span class="pille ${c}">${t}</span>`;
   const kunde = (id) => T.kunder.find((k) => k.id === id);
+  // Nemhandel (BEK 97 bilag 2 pkt. 8): har kunden en elektronisk adresse, og kan den modtage e-faktura? Slås op i
+  // Nemhandelsregistret, før en faktura sendes som PDF, så brugeren tydeligt kan se det.
+  const efAdr = (k) => { const d = S.dEf?.[k?.id] || {}; return !!(d.ean || d.peppol_id || d.efaktura_format); };
+  async function nhTjek(k) {
+    if (!k?.cvr || efAdr(k) || S.nhOpslag[k.cvr] !== undefined) return;
+    S.nhOpslag[k.cvr] = null;
+    const { data } = await sb.functions.invoke("nemhandel", { body: { cvr: k.cvr } }).catch(() => ({}));
+    S.nhOpslag[k.cvr] = data && typeof data.kan_modtage === "boolean" ? data : false;
+    if (S.drawer?.type === "ed" && S.ed && kunde(S.ed.kunde)?.cvr === k.cvr && data?.kan_modtage) { S.keepFocus = true; render(); S.keepFocus = false; }
+  }
+  const adrValg = (adr, id) => adr.length < 2 ? "" : `<select class="inp mt-2" id="${id}" aria-label="Elektronisk adresse">${adr.map((a, i) =>
+    `<option value="${i}">${E(a.navn || "Virksomheden")} (${a.type === "GLN" ? "EAN" : "CVR"} ${E(a.noegle)})</option>`).join("")}</select>`;
   const total = () => sum(T.konti, (k) => k.saldo);
   const aabne = () => TR().filter((t) => t.status === "spoergsmal" || t.status === "mangler_kvittering");
 
@@ -100,7 +112,8 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261028204504";
       if (afv === null || Math.abs(afv) >= 25) ting.push(["", afv === null ? "Passer din forskudsopgørelse?" : `Dit overskud er ${Math.abs(afv)} % ${afv > 0 ? "højere" : "lavere"} end sidste år`,
         "Ret den på skat.dk, så du undgår restskat", "Til skat.dk", `href="https://skat.dk/borger/forskudsopgoerelse" target="_blank" rel="noopener" data-skjul="forskud-${IDAG.slice(0, 4)}"`]);
     }
-    if (S.mitid?.dansk && !S.mitid.bekraeftet) ting.push(["", "Bekræft virksomheden med MitID", `Kræves fra ${F.datoLang(S.mitid.fra)}. Det tager et minut`, "Bekræft", `data-act="mitid" data-f="cvr"`]);
+    if (S.nh?.status === "tilmeldt" && !S.nh.tilmeldt_set) ting.push(["", "Du er tilmeldt Nemhandel", `Fra ${F.datoLang(S.nh.tilmeldt_tid.slice(0, 10))} kan dine leverandører sende regninger direkte ind`, "OK", `data-act="nh-set"`]);
+    if (S.mitid?.dansk && !S.mitid.bekraeftet) ting.push(["", "Bekræft virksomheden med MitID", `Kræves fra ${F.datoLang(S.mitid.fra)}. Det tager et minut`, "Bekræft", `data-act="mitid-side"`]);
     const linjer = ting.map(([k, titel, under, knap, attr]) => `<div class="td ${k}"><div class="t"><b>${titel}</b>${under ? `<small>${under}</small>` : ""}</div>${!attr ? "" : attr.startsWith("href") ? `<a class="td-link" ${attr}>${knap}</a>` : `<button class="td-link" ${attr}>${knap}</button>`}</div>`).join("");
     let tilbud = "";
     if (S.nh?.status === "ikke_tilmeldt") {
@@ -342,14 +355,16 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261028204504";
     const f = (l, v) => `<div class="felt"><label>${l}</label><div class="vaerdi">${E(v) || "–"}</div></div>`;
     const ind = {
       firma: `<div class="gitter g2"><div class="stak"><div class="kort"><div class="kort-hoved"><h2>Firmaoplysninger</h2></div><div class="gitter g2">${f("Navn", V.navn)}${f("CVR", V.cvr)}${f("Adresse", V.adresse)}${f("Bilagsadresse", V.bilagsadresse)}${f("Moms afregnes", (MOMSPERIODE[V.momsperiode] || "").replace(/^./, (c) => c.toUpperCase()))}${S.mitid?.dansk ? f("Bekræftet med MitID", S.mitid.bekraeftet ? F.datoLang(String(S.mitid.bekraeftet).slice(0, 10)) : "Ikke endnu") : ""}</div>
-        <div class="raekke mt-3"><button class="knap" data-act="skriv">Ret noget</button>${S.mitid?.dansk && !S.mitid.bekraeftet ? '<button class="knap" data-act="mitid" data-f="cvr">Bekræft med MitID</button>' : ""}</div></div>${konto()}</div><div class="stak">${abonnement()}</div></div>`,
+        <div class="raekke mt-3"><button class="knap" data-act="skriv">Ret noget</button>${S.mitid?.dansk && !S.mitid.bekraeftet ? '<button class="knap" data-act="mitid-side">Bekræft med MitID</button>' : ""}</div></div>${konto()}</div><div class="stak">${abonnement()}</div></div>`,
       fakturaer: `<div class="gitter g2"><div class="kort"><div class="kort-hoved"><h2>Udseende</h2></div><div class="raekke"><span class="flogo stor" style="background:${E(V.farve)}">${initialer(V.kort)}</span><b>Logo og farve på fakturaen</b></div>
           <div class="farver mt-2">${["#c98a3b", "#4b3aa6", "#1f7a4a", "#141414", "#2b55d6"].map((c, i) => `<button class="farve" data-act="farve" data-farve="${c}" style="background:${c}" aria-label="Farve ${i + 1}" aria-pressed="${V.farve === c}"></button>`).join("")}</div></div>
         <div class="kort"><div class="kort-hoved"><h2>Betaling og rykkere</h2></div><div class="liste">
           <div class="li"><div class="t"><b>Påmindelse af sig selv</b><small>2 dage efter forfald, uden gebyr</small></div><button class="sw" role="switch" aria-checked="${V.auto_paamindelse}" aria-label="Påmindelse" data-act="sw-rykker"></button></div>
           <div class="li"><div class="t"><b>Betalingsfrist</b></div><select class="inp auto" id="frist" aria-label="Betalingsfrist">${[8, 14, 30].map((d) => `<option value="${d}" ${V.betalingsfrist === d ? "selected" : ""}>${d} dage</option>`).join("")}</select></div>
           <div class="li"><div class="t"><b>Rykker med gebyr</b><small>Du sender dem fra fakturaen. 100 kr., højst tre, 10 dage imellem.</small></div></div>
-          <div class="li"><div class="t"><b>Regninger direkte ind</b><small>${{ tilmeldt: "Tilmeldt Nemhandel", accepteret: "På vej", afvist: "Gik ikke igennem; vi kigger på det", fravalgt: "Du har sagt nej tak", ikke_tilmeldt: "Gratis via Nemhandel" }[S.nh?.status || "ikke_tilmeldt"]}</small></div>${["tilmeldt", "accepteret", "afvist"].includes(S.nh?.status) ? "" : `<button class="knap lille" data-act="nh-ja">Tilmeld</button>`}</div></div></div></div>
+          <div class="li"><div class="t"><b>Regninger direkte ind</b><small>${{ tilmeldt: "Tilmeldt Nemhandel", accepteret: "På vej", afvist: "Gik ikke igennem; vi kigger på det", fravalgt: "Du har sagt nej tak", ikke_tilmeldt: "Gratis via Nemhandel",
+            allerede_tilmeldt: "Tilmeldt Nemhandel gennem et andet program", framelding_bedt: "Vi afmelder dig", frameldt: "Afmeldt" }[S.nh?.status || "ikke_tilmeldt"]}</small></div>${S.nh?.status === "tilmeldt" ? `<button class="knap lille" data-act="nh-frameld">Afmeld</button>`
+            : ["accepteret", "afvist", "allerede_tilmeldt", "framelding_bedt"].includes(S.nh?.status) ? "" : `<button class="knap lille" data-act="nh-ja">Tilmeld</button>`}</div></div></div></div>
         <div class="kort tabeldel mt-3"><div class="kort-hoved over-tabel"><h2>Varer og ydelser</h2><button class="knap lille" data-act="ny-vare">${IC.plus} Ny vare</button></div><div class="tabel">${T.varetyper.map((v) => `<div class="r rv"><div class="tekst">${E(v.navn)}</div><div class="b">${F.kr(v.pris)} / ${E(v.enhed)}</div><div class="not">${v.moms === false ? "Uden moms" : "Moms 25 %"}</div></div>`).join("") || '<div class="tom">Ingen varer endnu.</div>'}</div></div>`,
       forbindelser: S.indTab === "forbindelser" ? integrationer() : "",
       konti: S.indTab === "konti" ? kontiFane() : "",
@@ -459,15 +474,21 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261028204504";
       <div class="felt"><label for="cvr">CVR-nummer</label><div class="raekke"><input class="inp fyld" id="cvr" inputmode="numeric" placeholder="8 cifre" value="${E(k.cvr || "")}"><button class="knap" data-act="cvr-op">Slå op</button></div><small class="lille-tekst">Privatkunde? Lad feltet stå tomt.</small></div>
       <div class="gitter g2 mt-3">${[["Navn", "navn"], ["Adresse", "adresse"], ["Postnr. og by", "by"], ["Mail til fakturaer", "mail"]].map(([l, f]) => `<div class="felt"><label>${l}</label><input class="inp" data-nk="${f}" value="${E(k[f] || "")}"></div>`).join("")}</div>
       <div class="felt mt-3"><label>EAN (kun offentlige kunder)</label><input class="inp" data-nk="ean" inputmode="numeric" placeholder="13 cifre" value="${E(k.ean || "")}"></div>
-      ${k.fundet ? `<div class="not mt-3">Fundet i CVR</div>` : ""}</div>
+      ${k.nh?.kan_modtage ? `<div class="kort tonet mt-3"><b>Kan modtage e-faktura</b><p class="not">Kunden er tilmeldt Nemhandel, så fakturaerne sendes som e-faktura.</p>${adrValg(k.nh.adresser, "nk-adr")}</div>`
+        : k.fundet ? `<div class="not mt-3">Fundet i CVR</div>` : ""}</div>
       <div class="sf"><span></span><button class="knap p" data-act="gem-kunde">Opret kunde</button></div>`;
   }
 
   function editor() {
     const e = S.ed, tb = e.type === "tilbud", f = regn(e), k = kunde(e.kunde);
-    const sendes = tb ? "Du sender PDF'en til kunden" : k.ean ? "Sendes som e-faktura" : "Sendes som PDF på mail";
+    const ef = !tb && efAdr(k), nh = !tb && !ef && k?.cvr ? S.nhOpslag[k.cvr] : null;
+    if (!tb && !ef && k?.cvr && S.nhOpslag[k.cvr] === undefined) setTimeout(() => nhTjek(k));
+    const sendes = tb ? "Du sender PDF'en til kunden" : ef ? "Sendes som e-faktura" : "Sendes som PDF på mail";
+    const nhBesked = nh?.kan_modtage ? `<div class="kort tonet mt-3" role="alert"><b>${E(k.navn)} kan modtage e-faktura</b>
+      <p class="not">Kunden er tilmeldt Nemhandel. Send fakturaen som e-faktura i stedet for PDF, så kommer den direkte ind i kundens regnskab.</p>
+      ${adrValg(nh.adresser, "ed-adr")}<button class="knap lille mt-2" data-act="brug-ef">Send som e-faktura</button></div>` : "";
     return `<div class="sh"><div class="faner" role="tablist">${[["faktura", "Faktura"], ["tilbud", "Tilbud"]].map(([t, n]) => `<button role="tab" aria-selected="${e.type === t}" data-act="ed-type" data-t="${t}">${n}</button>`).join("")}</div><button class="ikonknap" data-act="luk" aria-label="Luk">${IC.luk}</button></div>
-      <div class="sk editor-grid"><div id="edform"><div class="felt"><label for="ek" class="raekke mellem">Kunde <a href="#" data-act="ny-kunde" class="link">Ny kunde</a></label><select class="inp" id="ek" data-ed="kunde">${T.kunder.map((x) => `<option value="${x.id}" ${x.id === e.kunde ? "selected" : ""}>${E(x.navn)}</option>`).join("")}</select></div>
+      <div class="sk editor-grid"><div id="edform"><div class="felt"><label for="ek" class="raekke mellem">Kunde <a href="#" data-act="ny-kunde" class="link">Ny kunde</a></label><select class="inp" id="ek" data-ed="kunde">${T.kunder.map((x) => `<option value="${x.id}" ${x.id === e.kunde ? "selected" : ""}>${E(x.navn)}</option>`).join("")}</select></div>${nhBesked}
         ${tb ? "" : `<div class="gitter g2 mt-2"><div class="felt"><label for="eref">Reference</label><input class="inp" id="eref" data-ed="reference" value="${E(e.reference || "")}" placeholder="Fx ordrenummer"></div>
           <div class="felt"><label for="elev">Leveringsdato</label><input class="inp" id="elev" type="date" data-ed="levering" value="${E(e.levering || "")}"></div></div>`}
         ${tb ? "" : `<div class="felt mt-2"><label for="eg">Gentag</label><select class="inp" id="eg" data-ed="gentag">${["Ikke gentaget", "Hver uge", "Hver måned", "Hvert kvartal"].map((g) => `<option ${e.gentag === g ? "selected" : ""}>${g}</option>`).join("")}</select></div>`}
@@ -563,17 +584,19 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261028204504";
     V = T.virksomhed; IDAG = T.idag;
     if (!V.ejer) V.ejer = BRUGER.navn || "";
     // Kaldene er uafhaengige af hinanden og koeres samtidig (foer: et ad gangen, og siden var hvid imens).
-    const [bank, udkast, udtraek, nh, pk, skiftet, vtm, mitid] = await Promise.all([
+    const [bank, udkast, udtraek, nh, pk, skiftet, vtm, mitid, def] = await Promise.all([
       rpc("bankforbindelse_status", { p_virksomhed: VID }).catch(() => []),
       rpc("kunde_udkast", { p_virksomhed: VID }).catch(() => []),
       sb.from("udtraek_bestilling").select("id, type, fra, til, status, sti, bestilt_tid").eq("virksomhed_id", VID)
         .order("bestilt_tid", { ascending: false }).limit(4),
-      sb.from("nemhandel_tilmelding").select("status, besked_vist").eq("virksomhed_id", VID).maybeSingle(),
+      sb.from("nemhandel_tilmelding").select("status, besked_vist, tilmeldt_tid, tilmeldt_set, opslag_tid").eq("virksomhed_id", VID).maybeSingle(),
       sb.from("virksomhed").select("pakke, aaben, momsperiode, oprettet").eq("id", VID).single(),
       sb.from("pakkeskift").select("ny_pakke, fra").eq("virksomhed_id", VID).maybeSingle(),
       sb.from("varetype").select("id, momskode").eq("virksomhed_id", VID),
-      rpc("mitid_status", { p_virksomhed: VID }).catch(() => null)]);
+      rpc("mitid_status", { p_virksomhed: VID }).catch(() => null),
+      sb.from("debitor").select("id, ean, peppol_id, efaktura_format").eq("virksomhed_id", VID)]);
     S.mitid = mitid;
+    S.dEf = Object.fromEntries((def.data || []).map((d) => [d.id, d])); S.nhOpslag ||= {};
     S.bank = bank; S.udkast = udkast; S.udtraek = udtraek.data || []; S.pakkeskift = skiftet.data || null;
     const mk = Object.fromEntries((vtm.data || []).map((x) => [x.id, x.momskode]));
     T.varetyper.forEach((v) => { v.moms = mk[v.id] !== "uden_moms"; });
@@ -619,8 +642,9 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261028204504";
       loginSide(error ? "Vi kunne ikke sende linket. Prøv igen." : `Vi har sendt et link til ${mail}. Åbn det på denne enhed.`);
     });
   }
-  // Versionerne, kunden accepterer; skal foelge dokumenterne paa tallo.dk (ret her, naar et af dem faar ny version).
-  const VILKAAR = { handelsbetingelser: "1.1", databehandleraftale: "1.1", privatlivspolitik: "1.2" };
+  // Versionerne, kunden accepterer; skal foelge dokumenterne paa tallo.dk (ret her, naar et af dem faar ny version;
+  // tests/test_vilkaar_versioner.py sammenligner med hjemmesiden).
+  const VILKAAR = { handelsbetingelser: "1.2", databehandleraftale: "1.3", privatlivspolitik: "1.4" };
   // Opstart på 2 minutter: CVR, navn, pakke. Kontoen er lukket, til Tallo åbner den.
   function tilmeldSide(besked = "", t = {}) {
     document.getElementById("lag").innerHTML = "";
@@ -680,8 +704,10 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261028204504";
   function mitidSide() {
     document.getElementById("lag").innerHTML = "";
     document.getElementById("app").innerHTML = `<main class="login"><div class="kort"><div class="logo-ord">tallo</div><h1>Bekræft din virksomhed</h1>
-      <p class="not">Før du går videre, skal du bekræfte med MitID Erhverv, at du hører til ${E(V.navn)} (CVR ${E(V.cvr)}). Loven kræver det af alle regnskabsprogrammer, og det sker kun én gang.</p>
-      <button class="knap p fuld-bredde mt-3" data-act="mitid" data-f="cvr">Bekræft med MitID</button>
+      <p class="not">Før du går videre, skal du bekræfte med MitID Erhverv, at du hører til virksomheden, og at oplysningerne fra CVR-registret er rigtige. Loven kræver det af alle regnskabsprogrammer, og det sker kun én gang.</p>
+      <div class="kort tonet mt-3"><b>${E(V.navn)}</b><div class="not">CVR ${E(V.cvr)}${V.adresse ? `<br>${E(V.adresse)}` : ""}</div></div>
+      <button class="knap p fuld-bredde mt-3" data-act="mitid" data-f="cvr">Det er rigtigt. Bekræft med MitID</button>
+      <p class="lille-tekst mt-2">Passer noget ikke? <a href="#" data-act="mitid-ret" class="link">Skriv til os</a> før du bekræfter.${S.mitid?.kraeves ? "" : ' <a href="#" data-act="mitid-luk" class="link">Ikke nu</a>'}</p>
       <p class="lille-tekst mt-3">Vi gemmer, at det er sket, hvornår og dit navn. Aldrig dit CPR-nummer.${FIRMAER.length > 1 ? ' <a href="#" data-act="skift" class="link">Skift virksomhed</a>.' : ""} <a href="#" data-act="logud" class="link">Log ud</a></p></div></main>`;
   }
   // Tilbage fra MitID (#mitid=...): vis, hvordan det gik, og gå til forsiden.
@@ -835,6 +861,29 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261028204504";
       await rpc("nemhandel_accepter", { p_virksomhed: VID });
       return opdater("Tak. Vi tilmelder dig Nemhandel og skriver, når det er sket");
     }
+    if (a === "brug-ef") {
+      const k = kunde(S.ed.kunde), adr = S.nhOpslag[k.cvr]?.adresser?.[+(document.getElementById("ed-adr")?.value || 0)];
+      if (!adr) return;
+      const { error } = await sb.from("debitor").update(adr.felter).eq("id", k.id);
+      if (error) throw new Fejl(error.message);
+      S.dEf[k.id] = { ...(S.dEf[k.id] || {}), ...adr.felter };
+      S.keepFocus = true; render(); S.keepFocus = false;
+      return F.toast(`Fakturaer til ${k.navn} sendes nu som e-faktura`);
+    }
+    if (a === "nh-frameld") {
+      if (!confirm("Afmeld Nemhandel? Dine leverandører kan så ikke længere sende regninger direkte ind.")) return;
+      await rpc("nemhandel_frameld", { p_virksomhed: VID });
+      return opdater("Vi afmelder dig Nemhandel og skriver, når det er sket");
+    }
+    if (a === "nh-set") { await rpc("nemhandel_tilmelding_set", { p_virksomhed: VID }); return opdater(); }
+    if (a === "mitid-side") return mitidSide();
+    if (a === "mitid-luk") return rute();
+    if (a === "mitid-ret") {
+      const tekst = prompt("Hvad passer ikke? (navn, adresse eller CVR-nummer)");
+      if (!tekst?.trim()) return;
+      await rpc("send_besked", { p_virksomhed: VID, p_tekst: `Stamoplysningerne passer ikke: ${tekst.trim()}` });
+      return F.toast("Tak. Vi kigger på det og skriver til dig");
+    }
     if (a === "nh-nej") {
       await rpc("nemhandel_sig_nej", { p_virksomhed: VID });
       return opdater("Fint. Du kan altid ændre det under Indstillinger, Fakturaer");
@@ -909,15 +958,16 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261028204504";
         try { msg = (await error.context.json()).fejl || msg; } catch { /* ingen detalje */ }
         S.nyKunde = { cvr }; render(); return F.toast(msg);
       }
-      S.nyKunde = { cvr, navn: data.navn, adresse: [data.adresse_vej, data.adresse_husnr].filter(Boolean).join(" "), by: [data.adresse_postnr, data.adresse_by].filter(Boolean).join(" "), fundet: true };
+      S.nyKunde = { cvr, navn: data.navn, adresse: [data.adresse_vej, data.adresse_husnr].filter(Boolean).join(" "), by: [data.adresse_postnr, data.adresse_by].filter(Boolean).join(" "), fundet: true, nh: data.nemhandel };
       render(); return F.toast("Fundet i CVR-registeret");
     }
     if (a === "gem-kunde") {
       const v = (f) => (document.querySelector(`[data-nk="${f}"]`)?.value || "").trim();
       if (!v("navn")) return F.toast("Skriv et navn, eller slå CVR-nummeret op");
       const [postnr, ...by] = v("by").split(" ");
+      const nhF = (!v("ean") && S.nyKunde?.nh?.adresser?.[+(document.getElementById("nk-adr")?.value || 0)]?.felter) || {};
       const { data, error } = await sb.from("debitor").insert({ virksomhed_id: VID, navn: v("navn"), cvr: (document.getElementById("cvr")?.value || "").replace(/\D/g, "") || S.nyKunde?.cvr || null, adresse_vej: v("adresse") || null,
-        adresse_postnr: /^\d{4}$/.test(postnr) ? postnr : null, adresse_by: by.join(" ") || (/^\d{4}$/.test(postnr) ? null : v("by")) || null, email: v("mail") || null, ean: v("ean").replace(/\D/g, "") || null }).select("id").single();
+        adresse_postnr: /^\d{4}$/.test(postnr) ? postnr : null, adresse_by: by.join(" ") || (/^\d{4}$/.test(postnr) ? null : v("by")) || null, email: v("mail") || null, ean: v("ean").replace(/\D/g, "") || nhF.ean || null, peppol_id: nhF.peppol_id || null, efaktura_format: nhF.efaktura_format || null }).select("id").single();
       if (error) throw new Fejl(error.code === "23514" ? (/ean/.test(error.message) ? "EAN skal være 13 cifre." : "CVR-nummeret er ikke gyldigt.") : error.message);
       if (S.ed) { S.ed.kunde = data.id; S.drawer = { type: "ed" }; } else { S.drawer = null; S.salgTab = "kunder"; }
       return opdater(`${v("navn")} er oprettet`);
@@ -1003,7 +1053,7 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261028204504";
     const ed = e.target.dataset.ed; if (!ed || !S.ed) return;
     const i = +e.target.dataset.i;
     if (ed === "gentag") { S.ed.gentag = e.target.value; S.keepFocus = true; render(); S.keepFocus = false; return; }
-    if (ed === "kunde") S.ed.kunde = e.target.value;
+    if (ed === "kunde") { S.ed.kunde = e.target.value; S.keepFocus = true; render(); S.keepFocus = false; return; }
     else if (ed === "vt") { const vt = T.varetyper.find((v) => v.id === e.target.value); S.ed.linjer[i].vt = vt.id; S.ed.linjer[i].pris = medMoms(vt, vt.pris); const p = document.querySelector(`[data-ed="pris"][data-i="${i}"]`); if (p) p.value = S.ed.linjer[i].pris; }
     else if (ed === "inkl") {
       S.ed.inkl = e.target.checked;
@@ -1014,7 +1064,7 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261028204504";
     else if (ed === "reference" || ed === "levering") S.ed[ed] = e.target.value;
     else S.ed.linjer[i][ed] = e.target.value.replace(",", ".");
     document.getElementById("prev").innerHTML = fakturaDok(regn(S.ed), S.ed.type === "tilbud" ? "TILBUD" : "FAKTURA");
-    const k = kunde(S.ed.kunde); document.getElementById("sendt-som").textContent = S.ed.type !== "tilbud" && k.ean ? "Sendes som e-faktura" : "Sendes som PDF på mail";
+    const k = kunde(S.ed.kunde); document.getElementById("sendt-som").textContent = S.ed.type !== "tilbud" && efAdr(k) ? "Sendes som e-faktura" : "Sendes som PDF på mail";
   });
   document.addEventListener("change", async (e) => {
     if (e.target.dataset.kat) { const b = document.querySelector(`[data-act="godkend-selv"][data-id="${e.target.dataset.kat}"]`); if (b) b.disabled = !e.target.value; }

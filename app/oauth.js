@@ -1,7 +1,7 @@
 // Samtykke, naar kundens egen AI (Claude, ChatGPT ...) vil forbindes til Tallo over MCP.
 // Supabase Auth sender kunden hertil med ?authorization_id=...; kunden logger ind med sit
 // almindelige Tallo-login og siger ja eller nej. Hvad AI'en maa, afgoeres i databasen (oauth_vagt).
-import { DEMO, LOKALT, sb } from "../felles/data.js?v=20261028204504";
+import { DEMO, LOKALT, sb } from "../felles/data.js?v=20261104201106";
 
 const app = document.getElementById("app");
 const id = new URLSearchParams(location.search).get("authorization_id") || "";
