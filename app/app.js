@@ -1,7 +1,7 @@
 // Tallos app til kunden: computer og telefon. Skærmene er de godkendte fra mockuppen (system/design/platform);
 // data kommer fra kunde_data(), og hver handling kalder en funktion i databasen, der selv tjekker adgang og regler.
-import { DEMO, Fejl, LOKALT, logUd, rpc, sb, sendBilag, session, virksomheder } from "../felles/data.js?v=20261105182117";
-import { SUPABASE_URL } from "../felles/config.js?v=20261105182117";
+import { DEMO, Fejl, LOKALT, logUd, rpc, sb, sendBilag, session, virksomheder } from "../felles/data.js?v=20261105182307";
+import { SUPABASE_URL } from "../felles/config.js?v=20261105182307";
 
   let T, V, IDAG, VID, BRUGER, FIRMAER = [];
   const E = F.esc, IC = F.ICON;
@@ -684,7 +684,7 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261105182117";
   }
   // Versionerne, kunden accepterer; skal foelge dokumenterne paa tallo.dk (ret her, naar et af dem faar ny version;
   // tests/test_vilkaar_versioner.py sammenligner med hjemmesiden).
-  const VILKAAR = { handelsbetingelser: "1.2", databehandleraftale: "1.3", privatlivspolitik: "1.4" };
+  const VILKAAR = { handelsbetingelser: "1.2", databehandleraftale: "1.4", privatlivspolitik: "1.5" };
   // Opstart på 2 minutter: CVR, navn, pakke. Kontoen er lukket, til Tallo åbner den.
   function tilmeldSide(besked = "", t = {}) {
     document.getElementById("lag").innerHTML = "";
