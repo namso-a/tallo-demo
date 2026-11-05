@@ -1,7 +1,7 @@
 // Tallos app til kunden: computer og telefon. Skærmene er de godkendte fra mockuppen (system/design/platform);
 // data kommer fra kunde_data(), og hver handling kalder en funktion i databasen, der selv tjekker adgang og regler.
-import { DEMO, Fejl, LOKALT, logUd, rpc, sb, sendBilag, session, virksomheder } from "../felles/data.js?v=20261104201106";
-import { SUPABASE_URL } from "../felles/config.js?v=20261104201106";
+import { DEMO, Fejl, LOKALT, logUd, rpc, sb, sendBilag, session, virksomheder } from "../felles/data.js?v=20261105082742";
+import { SUPABASE_URL } from "../felles/config.js?v=20261105082742";
 
   let T, V, IDAG, VID, BRUGER, FIRMAER = [];
   const E = F.esc, IC = F.ICON;
@@ -428,6 +428,18 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261104201106";
       <div class="felt mt-3"><label for="besked">${t.status === "spoergsmal" ? "Dit svar" : "Skriv til os om den"}</label><textarea class="inp" id="besked"></textarea></div></div>
       <div class="sf"><span></span><button class="knap ${handl ? "" : "p"}" data-act="send-besked">Send</button></div>`;
   }
+  // E-fakturaens vej og modtagerens svar (BEK 97 bilag 2 pkt. 1 f). [tekst, klasse]: ok = som forventet, nu = se på det.
+  const EF_TRIN = { sendt: ["Sendt som e-faktura", "ok"], leveret: ["Leveret til kundens system", "ok"], afvist: ["Kunne ikke leveres", "fejl"],
+    modtaget: ["Modtaget af kunden", "ok"], behandles: ["Kunden behandler fakturaen", "ok"], indsigelse: ["Kunden har en indsigelse", "nu"],
+    godkendt_forbehold: ["Godkendt med forbehold", "nu"], godkendt: ["Godkendt af kunden", "ok"], afvist_af_kunden: ["Afvist af kunden", "fejl"],
+    delvist_betalt: ["Delvist betalt ifølge kunden", "ok"], betalt: ["Betalt ifølge kunden", "ok"] };
+  function efForloeb(f) {
+    const x = S.ef?.[f.id]; if (!x) return "";
+    const h = [...(x.haendelser || [])].sort((a, b) => String(a.tid).localeCompare(String(b.tid)));
+    const trin = h.length ? h.map((e) => [EF_TRIN[e.type]?.[1] || "ok", EF_TRIN[e.type]?.[0] || e.type, F.datoLang(String(e.tid).slice(0, 10)) + (e.tekst ? ` · ${e.tekst}` : "")])
+      : [["nu", "Venter på at blive sendt", "Som e-faktura til " + x.modtager]];
+    return `<div class="kort mb-3"><div class="kort-hoved"><h2>E-faktura</h2></div><ul class="tidslinje">${trin.map(([c, t, u]) => `<li class="${c}">${E(t)}<small>${E(u)}</small></li>`).join("")}</ul></div>`;
+  }
   function skuffeF(f) {
     const [pc, pt] = fstat(f), ry = f.rykker || [];
     let forloeb = "";
@@ -439,7 +451,7 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261104201106";
       forloeb = `<div class="kort mb-3"><div class="kort-hoved"><h2>Betaling</h2>${pille(pc, pt)}</div><ul class="tidslinje">${trin.map(([c, t, u]) => `<li class="${c}">${t}<small>${u}</small></li>`).join("")}</ul>
         ${f.forfald < IDAG ? `<button class="knap ${kan ? "p" : ""}" data-act="rykker" ${kan ? "" : "disabled aria-disabled=\"true\""}>${gebyr ? `Send rykker (gebyr 100 kr.)` : "Send påmindelse"}</button>` : ""}</div>`;
     }
-    return `<div class="sh"><h2>Faktura ${f.nr}</h2><button class="ikonknap" data-act="luk" aria-label="Luk">${IC.luk}</button></div><div class="sk graa">${forloeb}${fakturaDok(f)}</div>
+    return `<div class="sh"><h2>Faktura ${f.nr}</h2><button class="ikonknap" data-act="luk" aria-label="Luk">${IC.luk}</button></div><div class="sk graa">${efForloeb(f)}${forloeb}${fakturaDok(f)}</div>
       <div class="sf"><div>${f.betalt ? pille(pc, pt) : ""}</div><div class="raekke"><button class="knap" data-act="udskriv">${IC.hent} Udskriv</button>${f.status === "krediteret" || f.status === "kreditnota" ? "" : `<button class="knap" data-act="krediter" data-nr="${f.nr}">Krediter</button>`}</div></div>`;
   }
 
@@ -584,7 +596,7 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261104201106";
     V = T.virksomhed; IDAG = T.idag;
     if (!V.ejer) V.ejer = BRUGER.navn || "";
     // Kaldene er uafhaengige af hinanden og koeres samtidig (foer: et ad gangen, og siden var hvid imens).
-    const [bank, udkast, udtraek, nh, pk, skiftet, vtm, mitid, def] = await Promise.all([
+    const [bank, udkast, udtraek, nh, pk, skiftet, vtm, mitid, def, ef] = await Promise.all([
       rpc("bankforbindelse_status", { p_virksomhed: VID }).catch(() => []),
       rpc("kunde_udkast", { p_virksomhed: VID }).catch(() => []),
       sb.from("udtraek_bestilling").select("id, type, fra, til, status, sti, bestilt_tid").eq("virksomhed_id", VID)
@@ -594,9 +606,11 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261104201106";
       sb.from("pakkeskift").select("ny_pakke, fra").eq("virksomhed_id", VID).maybeSingle(),
       sb.from("varetype").select("id, momskode").eq("virksomhed_id", VID),
       rpc("mitid_status", { p_virksomhed: VID }).catch(() => null),
-      sb.from("debitor").select("id, ean, peppol_id, efaktura_format").eq("virksomhed_id", VID)]);
+      sb.from("debitor").select("id, ean, peppol_id, efaktura_format").eq("virksomhed_id", VID),
+      sb.from("efaktura_forsendelse").select("faktura_id, status, modtager, haendelser").eq("virksomhed_id", VID)]);
     S.mitid = mitid;
     S.dEf = Object.fromEntries((def.data || []).map((d) => [d.id, d])); S.nhOpslag ||= {};
+    S.ef = Object.fromEntries((ef.data || []).map((x) => [x.faktura_id, x]));
     S.bank = bank; S.udkast = udkast; S.udtraek = udtraek.data || []; S.pakkeskift = skiftet.data || null;
     const mk = Object.fromEntries((vtm.data || []).map((x) => [x.id, x.momskode]));
     T.varetyper.forEach((v) => { v.moms = mk[v.id] !== "uden_moms"; });

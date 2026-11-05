@@ -169,6 +169,7 @@ textarea.inp { min-height: 76px; resize: vertical; }
 .tidslinje li.ok { color: var(--tekst); } .tidslinje li.ok::before { background: var(--tekst); }
 .tidslinje li.ok::after { background: var(--tekst); box-shadow: none; content: "✓"; color: var(--kort); font-size: 12px; display: grid; place-items: center; }
 .tidslinje li.nu { color: var(--tekst); font-weight: 600; } .tidslinje li.nu::after { box-shadow: inset 0 0 0 5px var(--accent); }
+.tidslinje li.fejl { color: var(--roed); font-weight: 600; } .tidslinje li.fejl::after { box-shadow: inset 0 0 0 5px var(--roed); }
 .tidslinje li small { display: block; font-weight: 400; color: var(--daempet); }
 .toast { position: fixed; left: 50%; bottom: calc(28px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--tekst); color: var(--kort); padding: 12px 20px; border-radius: 999px; z-index: 80;
   font-weight: 500; font-size: var(--t-tekst); box-shadow: 0 16px 40px -12px rgba(0,0,0,.45); animation: toast-ind var(--rolig) var(--let); max-width: calc(100vw - 32px); text-align: center; }
