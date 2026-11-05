@@ -1,7 +1,7 @@
 // Tallos app til kunden: computer og telefon. Skærmene er de godkendte fra mockuppen (system/design/platform);
 // data kommer fra kunde_data(), og hver handling kalder en funktion i databasen, der selv tjekker adgang og regler.
-import { DEMO, Fejl, LOKALT, logUd, rpc, sb, sendBilag, session, virksomheder } from "../felles/data.js?v=20261105083722";
-import { SUPABASE_URL } from "../felles/config.js?v=20261105083722";
+import { DEMO, Fejl, LOKALT, logUd, rpc, sb, sendBilag, session, virksomheder } from "../felles/data.js?v=20261105182117";
+import { SUPABASE_URL } from "../felles/config.js?v=20261105182117";
 
   let T, V, IDAG, VID, BRUGER, FIRMAER = [];
   const E = F.esc, IC = F.ICON;
@@ -191,7 +191,8 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261105083722";
           <div class="tal bel">${x.beloeb != null ? F.kr(x.type === "bank" ? x.beloeb : -x.beloeb) : ""}</div>
           <div class="valg">${katValg(id, f.konto)}
             <button class="knap ${alle || !f.konto ? "" : "p"}" data-act="godkend-selv" data-id="${id}" ${f.konto ? "" : "disabled"}>${IC.check} Godkend</button>
-            ${x.type === "bilag" ? `<button class="knap" data-act="afvis-selv" data-id="${id}">Ikke et bilag</button>` : `<button class="knap" data-act="scan">${IC.scan} Send bilag</button>`}</div></div>`;
+            ${S.efInd?.has(id) ? `<button class="knap" data-act="indsigelse" data-id="${id}">Indsigelse</button><button class="knap" data-act="afvis-ef" data-id="${id}">Afvis</button>`
+              : x.type === "bilag" ? `<button class="knap" data-act="afvis-selv" data-id="${id}">Ikke et bilag</button>` : `<button class="knap" data-act="scan">${IC.scan} Send bilag</button>`}</div></div>`;
       }).join("")}</div>`;
   }
 
@@ -644,6 +645,9 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261105083722";
     ST.behandles = V.pakke === "selv" ? ["accent", "Venter på dig"] : ["graa", "Tallo behandler"];   // i Gør det selv venter den på kunden
     if (V.pakke === "selv") {
       S.ind = V.aaben ? await rpc("kunde_indbakke", { p_virksomhed: VID }) : [];
+      // E-fakturaer fra adgangspunktet: afsenderen faar vores afvisning eller indsigelse (BEK 97 bilag 2 pkt. 1 e)
+      const bIds = S.ind.filter((x) => x.type === "bilag").map((x) => x.id);
+      S.efInd = new Set(bIds.length ? ((await sb.from("bilag").select("id").in("id", bIds).eq("kilde", "efaktura").eq("afsender", "sproom")).data || []).map((b) => b.id) : []);
       if (!S.kat) {
         const [{ data: ko }, { data: kk }] = await Promise.all([
           sb.from("konto").select("nummer, navn, type, momskode, standardkonto, funktion").eq("virksomhed_id", VID).order("nummer").limit(2000),
@@ -801,6 +805,14 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261105083722";
       let ok = 0;
       for (const x of alle) { try { await godkendEn(x, x.forslag.konto); ok++; } catch { /* den bliver staaende */ } }
       return opdater(ok === alle.length ? `${ok} godkendt` : `${ok} af ${alle.length} godkendt; resten står her stadig`);
+    }
+    if (a === "indsigelse" || a === "afvis-ef") {
+      const grund = (prompt(a === "afvis-ef" ? "Hvorfor afviser du fakturaen? Begrundelsen sendes til afsenderen." :
+        "Hvad skal afsenderen rette eller svare på? Det sendes til afsenderen.") || "").trim();
+      if (!grund) return;
+      if (a === "afvis-ef") { await rpc("kunde_afvis_bilag", { p_bilag: id, p_begrundelse: grund }); return opdater("Afvist. Afsenderen får besked"); }
+      await rpc("efaktura_indsigelse", { p_bilag: id, p_grund: grund });
+      return opdater("Indsigelsen sendes til afsenderen");
     }
     if (a === "godkend-selv" || a === "afvis-selv") {
       const x = (S.ind || []).find((y) => y.id === id), f = x.forslag || {};
