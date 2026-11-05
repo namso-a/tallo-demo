@@ -1,7 +1,7 @@
 // Tallos app til kunden: computer og telefon. Skærmene er de godkendte fra mockuppen (system/design/platform);
 // data kommer fra kunde_data(), og hver handling kalder en funktion i databasen, der selv tjekker adgang og regler.
-import { DEMO, Fejl, LOKALT, logUd, rpc, sb, sendBilag, session, virksomheder } from "../felles/data.js?v=20261105082742";
-import { SUPABASE_URL } from "../felles/config.js?v=20261105082742";
+import { DEMO, Fejl, LOKALT, logUd, rpc, sb, sendBilag, session, virksomheder } from "../felles/data.js?v=20261105083722";
+import { SUPABASE_URL } from "../felles/config.js?v=20261105083722";
 
   let T, V, IDAG, VID, BRUGER, FIRMAER = [];
   const E = F.esc, IC = F.ICON;
@@ -47,16 +47,33 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261105082742";
   const aktueltKvartal = () => T.kvartaler.find((q) => q.status === "afstemmes" && q.frist >= IDAG) || T.kvartaler.find((q) => q.status === "afstemmes") || T.kvartaler[T.kvartaler.length - 1] || { navn: "", at_betale: 0, frist: IDAG };
   const initialer = (n) => (n || "").split(/\s+/).filter(Boolean).slice(0, 2).map((x) => x[0]).join("").toUpperCase();
 
+  // Afsender pr. faktura (BEK 97 bilag 3 pkt. 1 c-e): binavn, P-enhed og bankkonto fra CVR og bankkontiene.
+  const adrTekst = (p) => [[p.adresse_vej, p.adresse_husnr].filter(Boolean).join(" "), [p.adresse_postnr, p.adresse_by].filter(Boolean).join(" ")].filter(Boolean).join(", ");
+  const bankTekst = (b) => b.iban && !b.reg_nr ? `IBAN ${b.iban}` : `reg. ${b.reg_nr} konto ${b.kontonr}`;
+  function afsValg(e) {
+    const p = S.penheder?.find((x) => x.pnummer === e.afsP), b = S.bankkonti?.find((x) => x.id === (e.afsBank || V.fbank));
+    return { navn: e.afsNavn || V.navn, adresse: p ? adrTekst(p) : V.adresse, pnummer: p?.pnummer, bank: b ? bankTekst(b) : null };
+  }
+  const harAfsValg = () => (V.binavne || []).length > 0 || (S.penheder || []).length > 1 || (S.bankkonti || []).length > 1;
+  function afsFelter(e) {
+    if (e.type === "tilbud" || !harAfsValg()) return "";
+    const sel = (navn, ed, valg, v) => `<div class="felt"><label>${navn}</label><select class="inp" data-ed="${ed}">${valg.map(([x, t]) =>
+      `<option value="${E(x)}" ${x === v ? "selected" : ""}>${E(t)}</option>`).join("")}</select></div>`;
+    return `<div class="gitter g2 mt-2">${(V.binavne || []).length ? sel("Navn på fakturaen", "afsNavn", [[V.navn, V.navn], ...V.binavne.map((b) => [b, b])], e.afsNavn || V.navn) : ""}
+      ${(S.penheder || []).length > 1 ? sel("Adresse (P-enhed)", "afsP", [["", V.adresse], ...S.penheder.map((x) => [x.pnummer, `${adrTekst(x)} (P-nr. ${x.pnummer})`])], e.afsP || "") : ""}
+      ${(S.bankkonti || []).length > 1 ? sel("Bankkonto", "afsBank", S.bankkonti.map((b) => [b.id, `${b.navn}: ${bankTekst(b)}`]), e.afsBank || V.fbank || S.bankkonti[0].id) : ""}</div>`;
+  }
+  const edDok = (e) => fakturaDok({ ...regn(e), afs: e.type === "tilbud" ? null : afsValg(e) }, e.type === "tilbud" ? "TILBUD" : "FAKTURA");
   function fakturaDok(f, titel = "FAKTURA") {
     const k = kunde(f.kunde), iban = (T.konti[0]?.iban || "").replace(/\s/g, ""), tb = titel === "TILBUD";
     const link = !tb && f.betalingslink ? `<div class="fbetal"><div><b>Betal med kort eller MobilePay</b><br>${E(f.betalingslink)}</div></div>` : "";
-    return `<div class="fdok"><div class="fh"><div><span class="flogo" style="background:${E(V.farve)}">${initialer(V.kort)}</span><b>${E(V.navn)}</b><br>${E(V.adresse)}<br>CVR ${V.cvr}</div><div class="fn">${titel}<br><b>Nr. ${f.nr ?? "kladde"}</b><br>${f.dato ? F.datoLang(f.dato) : ""}</div></div>
+    return `<div class="fdok"><div class="fh"><div><span class="flogo" style="background:${E(V.farve)}">${initialer(V.kort)}</span><b>${E(f.afs?.navn || V.navn)}</b><br>${f.afs?.navn && f.afs.navn !== V.navn ? E(V.navn) + "<br>" : ""}${E(f.afs?.adresse || V.adresse)}<br>CVR ${V.cvr}${f.afs?.pnummer ? `<br>P-nr. ${f.afs.pnummer}` : ""}</div><div class="fn">${titel}<br><b>Nr. ${f.nr ?? "kladde"}</b><br>${f.dato ? F.datoLang(f.dato) : ""}</div></div>
       <div class="fk"><small>Til</small><br><b>${E(k.navn)}</b><br>${k.cvr ? "CVR " + k.cvr + "<br>" : ""}${E(k.by)}</div>
       <table><thead><tr><th>Beskrivelse</th><th>Antal</th><th>Pris</th><th>Beløb</th></tr></thead><tbody>${f.linjer.map((l) =>
         `<tr><td>${E(l.tekst)}</td><td>${l.antal}</td><td>${F.kr(l.pris)}</td><td>${F.kr(l.antal * l.pris)}</td></tr>`).join("")}</tbody></table>
       <div class="fs"><div><span>Beløb</span><span>${F.kr(f.netto)}</span></div><div><span>Moms (25 %)</span><span>${F.kr(f.moms)}</span></div><div class="t"><span>I alt DKK</span><span>${F.kr(f.total)}</span></div></div>
       ${tb ? `<div class="fb"><div>Tilbuddet gælder til ${f.gyldig ? F.datoLang(f.gyldig) : "…"}.<br>Svar på mailen for at sige ja.</div><div></div></div>`
-        : `${link}<div class="fb"><div>Betaling til reg. ${iban.slice(4, 8)} konto ${iban.slice(8)}<br>Skriv fakturanummer ${f.nr ?? "…"} ved overførsel</div><div>Betalingsfrist ${f.forfald ? F.datoLang(f.forfald) : "…"}</div></div>`}
+        : `${link}<div class="fb"><div>Betaling til ${f.afs?.bank || `reg. ${iban.slice(4, 8)} konto ${iban.slice(8)}`}<br>Skriv fakturanummer ${f.nr ?? "…"} ved overførsel</div><div>Betalingsfrist ${f.forfald ? F.datoLang(f.forfald) : "…"}</div></div>`}
       <div class="ff">${E(V.navn)} · ${E(V.adresse)} · CVR ${V.cvr}</div></div>`;
   }
 
@@ -504,12 +521,13 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261105082742";
         ${tb ? "" : `<div class="gitter g2 mt-2"><div class="felt"><label for="eref">Reference</label><input class="inp" id="eref" data-ed="reference" value="${E(e.reference || "")}" placeholder="Fx ordrenummer"></div>
           <div class="felt"><label for="elev">Leveringsdato</label><input class="inp" id="elev" type="date" data-ed="levering" value="${E(e.levering || "")}"></div></div>`}
         ${tb ? "" : `<div class="felt mt-2"><label for="eg">Gentag</label><select class="inp" id="eg" data-ed="gentag">${["Ikke gentaget", "Hver uge", "Hver måned", "Hvert kvartal"].map((g) => `<option ${e.gentag === g ? "selected" : ""}>${g}</option>`).join("")}</select></div>`}
+        ${afsFelter(e)}
         <label class="flueboks mt-3"><input type="checkbox" data-ed="inkl" ${e.inkl ? "checked" : ""}> Priserne er inkl. moms</label>
         <div class="not mt-2">Linjer</div>${e.linjer.map((l, i) => `<div class="ed-linje"><select class="inp" data-ed="vt" data-i="${i}" aria-label="Vare">${T.varetyper.map((v) => `<option value="${v.id}" ${v.id === l.vt ? "selected" : ""}>${E(v.navn)}</option>`).join("")}</select>
           <input class="inp tal" data-ed="antal" data-i="${i}" value="${l.antal}" inputmode="decimal" aria-label="Antal"><input class="inp tal" data-ed="pris" data-i="${i}" value="${l.pris}" inputmode="decimal" aria-label="Pris"><button class="ikonknap" data-act="fjern-l" data-i="${i}" aria-label="Fjern linje">${IC.luk}</button></div>
           <input data-ed="tekst" data-i="${i}" value="${E(l.tekst || "")}" placeholder="Tekst (valgfri)" aria-label="Tekst på linjen" class="inp mt-1">`).join("")}
         <button class="knap lille mt-2" data-act="ny-l">${IC.plus} Tilføj linje</button></div>
-        <div><div id="prev">${fakturaDok(f, tb ? "TILBUD" : "FAKTURA")}</div></div></div>
+        <div><div id="prev">${edDok(e)}</div></div></div>
       <div class="sf"><span></span><div class="raekke"><span class="not" id="sendt-som">${sendes}</span><button class="knap p" data-act="send-f">${IC.send} ${tb ? "Opret tilbud" : e.gentag && e.gentag !== "Ikke gentaget" ? "Send og gentag" : "Send faktura"}</button></div></div>`;
   }
   // ---------------------------------------------------------------- skal/rendering ----
@@ -596,21 +614,24 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261105082742";
     V = T.virksomhed; IDAG = T.idag;
     if (!V.ejer) V.ejer = BRUGER.navn || "";
     // Kaldene er uafhaengige af hinanden og koeres samtidig (foer: et ad gangen, og siden var hvid imens).
-    const [bank, udkast, udtraek, nh, pk, skiftet, vtm, mitid, def, ef] = await Promise.all([
+    const [bank, udkast, udtraek, nh, pk, skiftet, vtm, mitid, def, ef, pen, bk] = await Promise.all([
       rpc("bankforbindelse_status", { p_virksomhed: VID }).catch(() => []),
       rpc("kunde_udkast", { p_virksomhed: VID }).catch(() => []),
       sb.from("udtraek_bestilling").select("id, type, fra, til, status, sti, bestilt_tid").eq("virksomhed_id", VID)
         .order("bestilt_tid", { ascending: false }).limit(4),
       sb.from("nemhandel_tilmelding").select("status, besked_vist, tilmeldt_tid, tilmeldt_set, opslag_tid").eq("virksomhed_id", VID).maybeSingle(),
-      sb.from("virksomhed").select("pakke, aaben, momsperiode, oprettet").eq("id", VID).single(),
+      sb.from("virksomhed").select("pakke, aaben, momsperiode, oprettet, binavne, faktura_bankkonto_id").eq("id", VID).single(),
       sb.from("pakkeskift").select("ny_pakke, fra").eq("virksomhed_id", VID).maybeSingle(),
       sb.from("varetype").select("id, momskode").eq("virksomhed_id", VID),
       rpc("mitid_status", { p_virksomhed: VID }).catch(() => null),
       sb.from("debitor").select("id, ean, peppol_id, efaktura_format").eq("virksomhed_id", VID),
-      sb.from("efaktura_forsendelse").select("faktura_id, status, modtager, haendelser").eq("virksomhed_id", VID)]);
+      sb.from("efaktura_forsendelse").select("faktura_id, status, modtager, haendelser").eq("virksomhed_id", VID),
+      sb.from("penhed").select("pnummer, navn, adresse_vej, adresse_husnr, adresse_postnr, adresse_by").eq("virksomhed_id", VID).eq("aktiv", true),
+      sb.from("bankkonto").select("id, navn, reg_nr, kontonr, iban").eq("virksomhed_id", VID)]);
     S.mitid = mitid;
     S.dEf = Object.fromEntries((def.data || []).map((d) => [d.id, d])); S.nhOpslag ||= {};
     S.ef = Object.fromEntries((ef.data || []).map((x) => [x.faktura_id, x]));
+    S.penheder = pen.data || []; S.bankkonti = (bk.data || []).filter((b) => b.iban || (b.reg_nr && b.kontonr));
     S.bank = bank; S.udkast = udkast; S.udtraek = udtraek.data || []; S.pakkeskift = skiftet.data || null;
     const mk = Object.fromEntries((vtm.data || []).map((x) => [x.id, x.momskode]));
     T.varetyper.forEach((v) => { v.moms = mk[v.id] !== "uden_moms"; });
@@ -619,6 +640,7 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261105082742";
     S.nh = nh.data || { status: "ikke_tilmeldt" };
     const px = pk.data;
     V.pakke = px?.pakke || "fuld"; V.aaben = px?.aaben !== false; V.momsperiode = px?.momsperiode || "kvartal"; V.oprettet = String(px?.oprettet || IDAG).slice(0, 10);
+    V.binavne = px?.binavne || []; V.fbank = px?.faktura_bankkonto_id || null;
     ST.behandles = V.pakke === "selv" ? ["accent", "Venter på dig"] : ["graa", "Tallo behandler"];   // i Gør det selv venter den på kunden
     if (V.pakke === "selv") {
       S.ind = V.aaben ? await rpc("kunde_indbakke", { p_virksomhed: VID }) : [];
@@ -852,6 +874,8 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261105082742";
         return opdater(`Tilbud T-${r.nummer} til ${k.navn} er oprettet. Udskriv det som PDF, og send det til kunden.`);
       }
       const f = await rpc("kunde_opret_faktura", { p_virksomhed: VID, p_debitor: ed.kunde, p_linjer: linjer, p_reference: (ed.reference || "").trim() || null, p_leveringsdato: ed.levering || null });
+      const navn = ed.afsNavn && ed.afsNavn !== V.navn ? ed.afsNavn : null, bankId = ed.afsBank && ed.afsBank !== V.fbank ? ed.afsBank : null;
+      if (navn || ed.afsP || bankId) await rpc("faktura_afsender", { p_faktura: f, p_navn: navn, p_pnummer: ed.afsP || null, p_bankkonto: bankId });
       const r = await rpc("kunde_send_faktura", { p_faktura: f });
       let tekst = `Faktura ${r.nummer} er udstedt og sendes ${r.sendt_som === "efaktura" ? "som e-faktura" : "som PDF på mail"}`;
       if (HVOR[ed.gentag]) {
@@ -1067,6 +1091,7 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261105082742";
     const ed = e.target.dataset.ed; if (!ed || !S.ed) return;
     const i = +e.target.dataset.i;
     if (ed === "gentag") { S.ed.gentag = e.target.value; S.keepFocus = true; render(); S.keepFocus = false; return; }
+    if (ed === "afsNavn" || ed === "afsP" || ed === "afsBank") { S.ed[ed] = e.target.value; document.getElementById("prev").innerHTML = edDok(S.ed); return; }
     if (ed === "kunde") { S.ed.kunde = e.target.value; S.keepFocus = true; render(); S.keepFocus = false; return; }
     else if (ed === "vt") { const vt = T.varetyper.find((v) => v.id === e.target.value); S.ed.linjer[i].vt = vt.id; S.ed.linjer[i].pris = medMoms(vt, vt.pris); const p = document.querySelector(`[data-ed="pris"][data-i="${i}"]`); if (p) p.value = S.ed.linjer[i].pris; }
     else if (ed === "inkl") {
@@ -1077,7 +1102,7 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261105082742";
     else if (ed === "tekst") S.ed.linjer[i].tekst = e.target.value;
     else if (ed === "reference" || ed === "levering") S.ed[ed] = e.target.value;
     else S.ed.linjer[i][ed] = e.target.value.replace(",", ".");
-    document.getElementById("prev").innerHTML = fakturaDok(regn(S.ed), S.ed.type === "tilbud" ? "TILBUD" : "FAKTURA");
+    document.getElementById("prev").innerHTML = edDok(S.ed);
     const k = kunde(S.ed.kunde); document.getElementById("sendt-som").textContent = S.ed.type !== "tilbud" && efAdr(k) ? "Sendes som e-faktura" : "Sendes som PDF på mail";
   });
   document.addEventListener("change", async (e) => {
