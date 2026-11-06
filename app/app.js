@@ -1,7 +1,7 @@
 // Tallos app til kunden: computer og telefon. Skærmene er de godkendte fra mockuppen (system/design/platform);
 // data kommer fra kunde_data(), og hver handling kalder en funktion i databasen, der selv tjekker adgang og regler.
-import { DEMO, Fejl, LOKALT, logUd, rpc, sb, sendBilag, session, virksomheder } from "../felles/data.js?v=20261106113856";
-import { SUPABASE_URL } from "../felles/config.js?v=20261106113856";
+import { DEMO, Fejl, LOKALT, logUd, rpc, sb, sendBilag, session, virksomheder } from "../felles/data.js?v=20261106120046";
+import { SUPABASE_URL } from "../felles/config.js?v=20261106120046";
 
   let T, V, IDAG, VID, BRUGER, FIRMAER = [];
   const E = F.esc, IC = F.ICON;
@@ -913,6 +913,7 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261106113856";
       location.assign(data.signedUrl); return;
     }
     if (a === "nh-ja") {
+      if (S.mitid?.dansk && !S.mitid.bekraeftet) return mitidSide();   // kun den, der kan handle for virksomheden
       await rpc("nemhandel_accepter", { p_virksomhed: VID });
       return opdater("Tak. Vi tilmelder dig Nemhandel og skriver, når det er sket");
     }
