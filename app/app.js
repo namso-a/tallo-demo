@@ -1,7 +1,7 @@
 // Tallos app til kunden: computer og telefon. Skærmene er de godkendte fra mockuppen (system/design/platform);
 // data kommer fra kunde_data(), og hver handling kalder en funktion i databasen, der selv tjekker adgang og regler.
-import { DEMO, Fejl, LOKALT, logUd, rpc, sb, sendBilag, session, virksomheder } from "../felles/data.js?v=20261106120046";
-import { SUPABASE_URL } from "../felles/config.js?v=20261106120046";
+import { DEMO, Fejl, LOKALT, logUd, rpc, sb, sendBilag, session, virksomheder } from "../felles/data.js?v=20261106174813";
+import { SUPABASE_URL } from "../felles/config.js?v=20261106174813";
 
   let T, V, IDAG, VID, BRUGER, FIRMAER = [];
   const E = F.esc, IC = F.ICON;
@@ -732,7 +732,7 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261106120046";
       document.getElementById("app").innerHTML = `<main class="login"><div class="kort"><h1>Noget gik galt</h1><p class="not">${E(err.message)}</p><button class="knap" data-act="genindlaes">Prøv igen</button></div></main>`;
       return;
     }
-    mitidTilbage();
+    if (await mitidTilbage()) return;
     if (S.mitid?.kraeves) return mitidSide();
     rute();
   }
@@ -748,17 +748,33 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261106120046";
       <div class="kort tonet mt-3"><b>${E(V.navn)}</b><div class="not">CVR ${E(V.cvr)}${V.adresse ? `<br>${E(V.adresse)}` : ""}</div></div>
       <button class="knap p fuld-bredde mt-3" data-act="mitid" data-f="cvr">Det er rigtigt. Bekræft med MitID</button>
       <p class="lille-tekst mt-2">Passer noget ikke? <a href="#" data-act="mitid-ret" class="link">Skriv til os</a> før du bekræfter.${S.mitid?.kraeves ? "" : ' <a href="#" data-act="mitid-luk" class="link">Ikke nu</a>'}</p>
-      <p class="lille-tekst mt-3">Vi gemmer, at det er sket, hvornår og dit navn. Aldrig dit CPR-nummer.${FIRMAER.length > 1 ? ' <a href="#" data-act="skift" class="link">Skift virksomhed</a>.' : ""} <a href="#" data-act="logud" class="link">Log ud</a></p></div></main>`;
+      <p class="lille-tekst mt-3">Vi gemmer, at det er sket, hvornår og dit navn. Aldrig dit CPR-nummer.${FIRMAER.length > 1 ? ' <a href="#" data-act="skift" class="link">Skift virksomhed</a>.' : ""} Du er logget ind som ${E(BRUGER.mail)}. <a href="#" data-act="logud" class="link">Log ud</a></p></div></main>`;
   }
-  // Tilbage fra MitID (#mitid=...): vis, hvordan det gik, og gå til forsiden.
-  function mitidTilbage() {
+  // Tilbage fra MitID (#mitid=...). Er alt i orden, skal personen selv sige ja, for her kan en svindler have fået vedkommende
+  // til at åbne et loginlink til svindlerens konto. Derfor står kontoens mail på siden. Svarer true, når siden er vist.
+  async function mitidTilbage() {
     const m = location.hash.match(/^#mitid=(\w+)(?:&k=([\w-]+))?/);
-    if (!m) return;
+    if (!m) return false;
     history.replaceState(null, "", location.pathname + "#overblik");
-    if (m[1] !== "afventer") return void setTimeout(() => F.toast(MITID_SVAR[m[1]] || MITID_SVAR.fejl), 300);
-    rpc("mitid_bekraeft", { p_kode: m[2] }).then(async (r) => {
+    if (m[1] !== "afventer") { setTimeout(() => F.toast(MITID_SVAR[m[1]] || MITID_SVAR.fejl), 300); return false; }
+    const r = await rpc("mitid_afventer", { p_kode: m[2] }).catch(() => ({ resultat: "fejl" }));
+    if (r.resultat !== "afventer") { setTimeout(() => F.toast(MITID_SVAR[r.resultat] || MITID_SVAR.fejl), 300); return false; }
+    S.mitidKode = m[2];
+    document.getElementById("lag").innerHTML = "";
+    document.getElementById("app").innerHTML = `<main class="login"><div class="kort"><div class="logo-ord">tallo</div><h1>Er det din konto?</h1>
+      <p class="not">Du er ved at give kontoen <b>${E(BRUGER.mail)}</b> ret til at handle for virksomheden nedenfor. Sig kun ja, hvis det er din egen mail, eller en du kender.</p>
+      <div class="kort tonet mt-3"><b>${E(r.virksomhed)}</b><div class="not">CVR ${E(r.cvr)}${r.mitid_navn ? `<br>Bekræftet med MitID af ${E(r.mitid_navn)}` : ""}</div></div>
+      <button class="knap p fuld-bredde mt-3" data-act="mitid-ja">Ja, det er min konto</button>
+      <button class="knap fuld-bredde mt-2" data-act="mitid-nej">Nej, det er ikke min konto</button>
+      <p class="lille-tekst mt-3">Har nogen bedt dig om at logge ind her? Så tryk nej, og skriv til os.</p></div></main>`;
+    return true;
+  }
+  function mitidJa() {
+    const kode = S.mitidKode;
+    S.mitidKode = null;
+    rpc("mitid_bekraeft", { p_kode: kode }).then(async (r) => {
       S.mitid = await rpc("mitid_status", { p_virksomhed: VID }).catch(() => S.mitid);
-      render();
+      if (S.mitid?.kraeves) mitidSide(); else rute();
       F.toast(MITID_SVAR[r.resultat] || MITID_SVAR.fejl);
     }).catch(() => F.toast(MITID_SVAR.fejl));
   }
@@ -1053,6 +1069,8 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261106120046";
     if (a === "luk") { if (el.tagName === "A") { S.mere = false; S.drawer = null; render(); return; } return luk(); }
     if (a === "aabn-t") return aabn({ type: "t", id });
     if (a === "mitid") { e.preventDefault(); return mitidStart(el.dataset.f); }
+    if (a === "mitid-ja") { e.preventDefault(); return mitidJa(); }
+    if (a === "mitid-nej") { e.preventDefault(); S.mitidKode = null; return logUd(); }
     if (a === "aabn-f") return aabn({ type: "f", nr: +el.dataset.nr });
     if (a === "skriv") return aabn({ type: "besked" });
     if (a === "side-smal") return F.sidebar.skift(SIDE);
@@ -1164,7 +1182,7 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261106120046";
   const VIDERE = { likviditet: ["rapporter"], udgifter: ["overblik", () => { S.filter = "udgifter"; }], transaktioner: ["overblik"], integrationer: ["indstillinger", () => { S.indTab = "forbindelser"; }],
     konto: ["indstillinger", () => { S.indTab = "firma"; }] };
   function rute() {
-    mitidTilbage();
+    if (location.hash.startsWith("#mitid=")) return void mitidTilbage().then((vist) => { if (!vist) rute(); });
     let r = location.hash.slice(1); if (VIDERE[r]) { VIDERE[r][1]?.(); history.replaceState(null, "", "#" + VIDERE[r][0]); r = VIDERE[r][0]; }
     const skift = VIEWS[r] && r !== S.route && T;
     const tegn = () => { if (VIEWS[r]) { S.route = r; S.drawer = null; S.mere = false; window.scrollTo(0, 0); } render(); };

@@ -1,6 +1,6 @@
 // Bogholderens arbejdsbord paa rigtige data. Én indbakke paa tvaers af kunder, tastaturet foerst. Stille som standard
 // (Othman 22. okt 2026): det, der er i orden, har ingen farve; violet er det, der venter, og roed er fejl. Al logik ligger i databasen; her vises, vaelges og kaldes kun. Login kraever 2-trins (aal2).
-import { DEMO, Fejl, LOKALT, logUd, rpc, sb, session } from "../felles/data.js?v=20261106120046";
+import { DEMO, Fejl, LOKALT, logUd, rpc, sb, session } from "../felles/data.js?v=20261106174813";
 
 const E = F.esc, IC = F.ICON, kr = F.kr;
 const pille = (c, t) => `<span class="pille ${c}">${t}</span>`;
@@ -49,6 +49,25 @@ const kontonavn = (v, n) => (S.konti[v] || []).find((k) => k.nummer === n)?.navn
 const leverandoergaeld = (v) => (S.konti[v] || []).find((k) => k.type === "status" && /leverandører af varer.*kortfristet/i.test(k.navn))?.nummer || null;
 const ejerkonto = (v) => (S.konti[v] || []).find((k) => k.funktion === "ejer")?.nummer || null;
 
+// Rækkens filtype er kundens paastand. Kun en fil, der faktisk er pdf eller et billede, vises, og saa fra en blob med den rigtige
+// type, saa en xml- eller html-fil aldrig kan koere script i en ramme paa arbejdsbordet.
+function filtype(b) {
+  const start = (s, o = 0) => [...s].every((c, i) => b[o + i] === c.charCodeAt(0));
+  if (start("%PDF-")) return "application/pdf";
+  if (b[0] === 0x89 && start("PNG", 1)) return "image/png";
+  if (b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return "image/jpeg";
+  if (start("GIF8")) return "image/gif";
+  if (start("RIFF") && start("WEBP", 8)) return "image/webp";
+  return null;
+}
+async function sikkerFil(url) {
+  const svar = await fetch(url);
+  if (!svar.ok) return null;
+  const data = new Uint8Array(await svar.arrayBuffer());
+  const type = filtype(data);
+  return type ? { url: URL.createObjectURL(new Blob([data], { type })), type } : null;
+}
+
 // Det, der vises om et bilag: udtraekket, filen og banklinjen, hentet naar posten vaelges.
 async function detalje(r) {
   if (!r || S.det[r.key]) return;
@@ -70,6 +89,11 @@ async function hentDetalje(r, d) {
       const s = await sb.storage.from("bilag").createSignedUrl(`${r.virksomhed_id}/${data.sha256}`, 900);
       d.url = s.data?.signedUrl || null;
       if (d.url && /xml$/.test(data.mime || "")) d.xml = await fetch(d.url).then((x) => x.text()).catch(() => null);
+      else if (d.url) d.vis = await sikkerFil(d.url).catch(() => null);
+      if (d.url && d.xml == null && !d.vis) {
+        const h = await sb.storage.from("bilag").createSignedUrl(`${r.virksomhed_id}/${data.sha256}`, 900, { download: data.filnavn || true });
+        d.hent = h.data?.signedUrl || null;
+      }
     }
   }
   if (r.type === "bilag" || r.type === "bank") {
@@ -214,10 +238,10 @@ function midt(r) {
     if (!d.bilag) return `<div class="midt-fladen"><div class="tom">${d.faerdig ? "Bilaget findes ikke længere." : "Henter bilaget ..."}</div></div>`;
     if (!d.url) return `<div class="midt-fladen"><div class="tom">Filen kunne ikke hentes fra arkivet.</div></div>`;
     // Kun pdf og billeder vises direkte. En xml-fil kan indeholde script, saa den vises som tekst.
-    if (/^image\//.test(d.bilag.mime)) return `<div class="midt-fladen fil"><img src="${E(d.url)}" alt="${E(d.bilag.filnavn)}"></div>`;
-    if (d.bilag.mime === "application/pdf") return `<div class="midt-fladen fil"><iframe src="${E(d.url)}" title="${E(d.bilag.filnavn)}"></iframe></div>`;
+    if (d.vis?.type.startsWith("image/")) return `<div class="midt-fladen fil"><img src="${E(d.vis.url)}" alt="${E(d.bilag.filnavn)}"></div>`;
+    if (d.vis) return `<div class="midt-fladen fil"><iframe src="${E(d.vis.url)}" title="${E(d.bilag.filnavn)}"></iframe></div>`;
     return d.xml != null ? `<div class="midt-fladen fil"><pre class="xml-vis">${E(d.xml)}</pre></div>`
-      : `<div class="midt-fladen"><div class="tom"><a class="link" href="${E(d.url)}" target="_blank" rel="noopener">Hent filen</a></div></div>`;
+      : `<div class="midt-fladen"><div class="tom">${d.hent ? `<a class="link" href="${E(d.hent)}" rel="noopener">Hent filen</a>` : "Filen kunne ikke vises."}</div></div>`;
   }
   if (r.type === "bank") return `<div class="midt-fladen"><div class="kort midt-kort"><h2>Banklinje</h2><div class="stort tal">${r.beloeb > 0 ? "+" : ""}${kr(r.beloeb)} <small>kr.</small></div><div class="not">${E(r.tekst)} · ${dk(r.dato)} · ${E(r.virksomhed)}</div></div></div>`;
   if (r.type === "moms") {
@@ -733,7 +757,12 @@ async function handling(a, el, e) {
   if (a === "post-bilag") return travlt(async () => {
     const { data } = await sb.storage.from("bilag").createSignedUrl(`${S.kunde.v}/${el.dataset.sha}`, 600);
     if (!data?.signedUrl) throw new Fejl("Bilaget kunne ikke hentes fra arkivet");
-    window.open(data.signedUrl, "_blank", "noopener");
+    const vis = await sikkerFil(data.signedUrl);
+    if (vis) return void window.open(vis.url, "_blank");
+    // Alt andet (fx xml) hentes som fil og aabnes ikke i browseren.
+    const hent = await sb.storage.from("bilag").createSignedUrl(`${S.kunde.v}/${el.dataset.sha}`, 600, { download: true });
+    if (!hent.data?.signedUrl) throw new Fejl("Bilaget kunne ikke hentes fra arkivet");
+    location.href = hent.data.signedUrl;
   });
   if (a === "nh-reg") {
     const ep = prompt(`Tilmeldt hos adgangsudbyderen? Skriv endpoint-id (fx 0184:DK${el.dataset.cvr}). Lad feltet stå tomt og skriv en fejl i stedet ved at starte med "fejl:".`, `0184:DK${el.dataset.cvr}`);
