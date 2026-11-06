@@ -1,6 +1,6 @@
 // Bogholderens arbejdsbord paa rigtige data. Én indbakke paa tvaers af kunder, tastaturet foerst. Stille som standard
 // (Othman 22. okt 2026): det, der er i orden, har ingen farve; violet er det, der venter, og roed er fejl. Al logik ligger i databasen; her vises, vaelges og kaldes kun. Login kraever 2-trins (aal2).
-import { DEMO, Fejl, LOKALT, logUd, rpc, sb, session } from "../felles/data.js?v=20261105182307";
+import { DEMO, Fejl, LOKALT, logUd, rpc, sb, session } from "../felles/data.js?v=20261106113856";
 
 const E = F.esc, IC = F.ICON, kr = F.kr;
 const pille = (c, t) => `<span class="pille ${c}">${t}</span>`;
@@ -69,6 +69,7 @@ async function hentDetalje(r, d) {
     if (data) {
       const s = await sb.storage.from("bilag").createSignedUrl(`${r.virksomhed_id}/${data.sha256}`, 900);
       d.url = s.data?.signedUrl || null;
+      if (d.url && /xml$/.test(data.mime || "")) d.xml = await fetch(d.url).then((x) => x.text()).catch(() => null);
     }
   }
   if (r.type === "bilag" || r.type === "bank") {
@@ -212,8 +213,11 @@ function midt(r) {
     if (d.fejl) return `<div class="midt-fladen"><div class="tom">${E(d.fejl)}</div></div>`;
     if (!d.bilag) return `<div class="midt-fladen"><div class="tom">${d.faerdig ? "Bilaget findes ikke længere." : "Henter bilaget ..."}</div></div>`;
     if (!d.url) return `<div class="midt-fladen"><div class="tom">Filen kunne ikke hentes fra arkivet.</div></div>`;
-    return /^image\//.test(d.bilag.mime) ? `<div class="midt-fladen fil"><img src="${E(d.url)}" alt="${E(d.bilag.filnavn)}"></div>`
-      : `<div class="midt-fladen fil"><iframe src="${E(d.url)}" title="${E(d.bilag.filnavn)}"></iframe></div>`;
+    // Kun pdf og billeder vises direkte. En xml-fil kan indeholde script, saa den vises som tekst.
+    if (/^image\//.test(d.bilag.mime)) return `<div class="midt-fladen fil"><img src="${E(d.url)}" alt="${E(d.bilag.filnavn)}"></div>`;
+    if (d.bilag.mime === "application/pdf") return `<div class="midt-fladen fil"><iframe src="${E(d.url)}" title="${E(d.bilag.filnavn)}"></iframe></div>`;
+    return d.xml != null ? `<div class="midt-fladen fil"><pre class="xml-vis">${E(d.xml)}</pre></div>`
+      : `<div class="midt-fladen"><div class="tom"><a class="link" href="${E(d.url)}" target="_blank" rel="noopener">Hent filen</a></div></div>`;
   }
   if (r.type === "bank") return `<div class="midt-fladen"><div class="kort midt-kort"><h2>Banklinje</h2><div class="stort tal">${r.beloeb > 0 ? "+" : ""}${kr(r.beloeb)} <small>kr.</small></div><div class="not">${E(r.tekst)} · ${dk(r.dato)} · ${E(r.virksomhed)}</div></div></div>`;
   if (r.type === "moms") {

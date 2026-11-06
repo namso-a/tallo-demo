@@ -102,3 +102,4 @@
 /* Arbejdsbordet bruger hele bredden med vilje: det er et vaerktoej, og indbakkens tre paneler vinder ved pladsen.
    (Kundens app staar derimod i en centreret kolonne.) */
 .top.bord, .sider.bord { max-width: none; }
+.xml-vis { margin: 0; padding: 16px; height: 100%; overflow: auto; font: 12px/1.5 ui-monospace, Consolas, monospace; white-space: pre-wrap; word-break: break-word; }

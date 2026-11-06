@@ -1,7 +1,7 @@
 // Tallos app til kunden: computer og telefon. Skærmene er de godkendte fra mockuppen (system/design/platform);
 // data kommer fra kunde_data(), og hver handling kalder en funktion i databasen, der selv tjekker adgang og regler.
-import { DEMO, Fejl, LOKALT, logUd, rpc, sb, sendBilag, session, virksomheder } from "../felles/data.js?v=20261105182307";
-import { SUPABASE_URL } from "../felles/config.js?v=20261105182307";
+import { DEMO, Fejl, LOKALT, logUd, rpc, sb, sendBilag, session, virksomheder } from "../felles/data.js?v=20261106113856";
+import { SUPABASE_URL } from "../felles/config.js?v=20261106113856";
 
   let T, V, IDAG, VID, BRUGER, FIRMAER = [];
   const E = F.esc, IC = F.ICON;
@@ -525,7 +525,7 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261105182307";
         ${afsFelter(e)}
         <label class="flueboks mt-3"><input type="checkbox" data-ed="inkl" ${e.inkl ? "checked" : ""}> Priserne er inkl. moms</label>
         <div class="not mt-2">Linjer</div>${e.linjer.map((l, i) => `<div class="ed-linje"><select class="inp" data-ed="vt" data-i="${i}" aria-label="Vare">${T.varetyper.map((v) => `<option value="${v.id}" ${v.id === l.vt ? "selected" : ""}>${E(v.navn)}</option>`).join("")}</select>
-          <input class="inp tal" data-ed="antal" data-i="${i}" value="${l.antal}" inputmode="decimal" aria-label="Antal"><input class="inp tal" data-ed="pris" data-i="${i}" value="${l.pris}" inputmode="decimal" aria-label="Pris"><button class="ikonknap" data-act="fjern-l" data-i="${i}" aria-label="Fjern linje">${IC.luk}</button></div>
+          <input class="inp tal" data-ed="antal" data-i="${i}" value="${E(l.antal)}" inputmode="decimal" aria-label="Antal"><input class="inp tal" data-ed="pris" data-i="${i}" value="${E(l.pris)}" inputmode="decimal" aria-label="Pris"><button class="ikonknap" data-act="fjern-l" data-i="${i}" aria-label="Fjern linje">${IC.luk}</button></div>
           <input data-ed="tekst" data-i="${i}" value="${E(l.tekst || "")}" placeholder="Tekst (valgfri)" aria-label="Tekst på linjen" class="inp mt-1">`).join("")}
         <button class="knap lille mt-2" data-act="ny-l">${IC.plus} Tilføj linje</button></div>
         <div><div id="prev">${edDok(e)}</div></div></div>
@@ -684,7 +684,7 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261105182307";
   }
   // Versionerne, kunden accepterer; skal foelge dokumenterne paa tallo.dk (ret her, naar et af dem faar ny version;
   // tests/test_vilkaar_versioner.py sammenligner med hjemmesiden).
-  const VILKAAR = { handelsbetingelser: "1.2", databehandleraftale: "1.4", privatlivspolitik: "1.5" };
+  const VILKAAR = { handelsbetingelser: "1.2", databehandleraftale: "1.4", privatlivspolitik: "1.6" };
   // Opstart på 2 minutter: CVR, navn, pakke. Kontoen er lukket, til Tallo åbner den.
   function tilmeldSide(besked = "", t = {}) {
     document.getElementById("lag").innerHTML = "";
@@ -739,7 +739,7 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261105182307";
 
   // ------------------------------------------------------------- MitID (BEK 97 § 5 a og b) ----
   // Fra 1. marts 2027 bekræfter kunden én gang med MitID Erhverv, at hun hører til virksomheden. Før det er det frivilligt.
-  const MITID_SVAR = { bekraeftet: "Virksomheden er bekræftet med MitID", cvr_passer_ikke: "MitID-loginet hørte til et andet CVR-nummer. Prøv igen med virksomhedens MitID Erhverv.",
+  const MITID_SVAR = { bekraeftet: "Virksomheden er bekræftet med MitID", rolle_mangler: "Det skal være en, der kan tegne virksomheden, som bekræfter den med MitID.", forkert_bruger: "Log ind på den konto, der startede bekræftelsen, og prøv igen.", cvr_passer_ikke: "MitID-loginet hørte til et andet CVR-nummer. Prøv igen med virksomhedens MitID Erhverv.",
     afbrudt: "Du afbrød MitID. Prøv igen, når du er klar.", udloebet: "Linket var udløbet. Prøv igen.", fejl: "MitID gik ikke igennem. Prøv igen om lidt." };
   function mitidSide() {
     document.getElementById("lag").innerHTML = "";
@@ -752,10 +752,15 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261105182307";
   }
   // Tilbage fra MitID (#mitid=...): vis, hvordan det gik, og gå til forsiden.
   function mitidTilbage() {
-    const svar = location.hash.match(/^#mitid=(\w+)/)?.[1];
-    if (!svar) return;
+    const m = location.hash.match(/^#mitid=(\w+)(?:&k=([\w-]+))?/);
+    if (!m) return;
     history.replaceState(null, "", location.pathname + "#overblik");
-    setTimeout(() => F.toast(MITID_SVAR[svar] || MITID_SVAR.fejl), 300);
+    if (m[1] !== "afventer") return void setTimeout(() => F.toast(MITID_SVAR[m[1]] || MITID_SVAR.fejl), 300);
+    rpc("mitid_bekraeft", { p_kode: m[2] }).then(async (r) => {
+      S.mitid = await rpc("mitid_status", { p_virksomhed: VID }).catch(() => S.mitid);
+      render();
+      F.toast(MITID_SVAR[r.resultat] || MITID_SVAR.fejl);
+    }).catch(() => F.toast(MITID_SVAR.fejl));
   }
   async function mitidStart(formaal = "cvr") {
     const { data, error } = await sb.functions.invoke("mitid/start", { body: { virksomhed: VID, formaal, tilbage: location.origin + location.pathname } });
