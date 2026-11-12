@@ -1,6 +1,6 @@
 // Bogholderens arbejdsbord paa rigtige data. Én indbakke paa tvaers af kunder, tastaturet foerst. Stille som standard
 // (Othman 22. okt 2026): det, der er i orden, har ingen farve; violet er det, der venter, og roed er fejl. Al logik ligger i databasen; her vises, vaelges og kaldes kun. Login kraever 2-trins (aal2).
-import { DEMO, Fejl, LOKALT, logUd, rpc, sb, session } from "../felles/data.js?v=20261106174813";
+import { DEMO, Fejl, LOKALT, logUd, rpc, sb, session } from "../felles/data.js?v=20261112195147";
 
 const E = F.esc, IC = F.ICON, kr = F.kr;
 const pille = (c, t) => `<span class="pille ${c}">${t}</span>`;
@@ -318,7 +318,7 @@ function kunde() {
   const tabs = [["overblik", "Overblik"], ["konto", "Konto"], ["posteringer", "Posteringer"], ["konti", "Konti"], ["regler", "Regler"], ["stamdata", "Stamdata"]];
   const ko = K.konto, pnavn = (p) => (p === "selv" ? "Gør det selv med AI" : "Med bogholder");
   const ind = {
-    overblik: `<div class="gitter g3">${K.afst.map((b) => `<div class="kort"><h2>Afstemning · ${E(b.navn)}</h2><div class="stort tal">${kr(b.a.difference)} <small>difference</small></div><div class="not">Bank ${kr(b.a.bank_saldo)} · bogført ${kr(b.a.bogfoert_saldo)}</div><div class="mt-1">${b.a.afstemt ? "" : pille("accent", `${b.a.uafstemte_banklinjer} ikke afstemt`)}${b.a.import_hul ? " " + pille("roed", "Hul i bankimporten") : ""}</div></div>`).join("") || `<div class="kort"><h2>Afstemning</h2><p class="not">Ingen bankkonto endnu.</p></div>`}
+    overblik: `<div class="gitter g3">${K.afst.map((b) => `<div class="kort"><h2>Afstemning · ${E(b.navn)}</h2><div class="stort tal">${kr(b.a.difference)} <small>difference</small></div><div class="not">Bank ${kr(b.a.bank_saldo)} · bogført ${kr(b.a.bogfoert_saldo)}</div><div class="mt-1">${b.a.uafstemte_banklinjer ? pille("accent", `${b.a.uafstemte_banklinjer} banklinjer ikke afstemt`) : ""}${b.a.uafstemte_posteringer ? " " + pille("accent", `${b.a.uafstemte_posteringer} bogført, ikke i banken`) : ""}${b.a.import_hul ? " " + pille("roed", "Hul i bankimporten") : ""}</div></div>`).join("") || `<div class="kort"><h2>Afstemning</h2><p class="not">Ingen bankkonto endnu.</p></div>`}
       <div class="kort"><h2>I indbakken</h2><div class="liste mt-1"><div class="li"><div class="t">Bilag</div>${t.bilag ? pille("accent", t.bilag) : "–"}</div><div class="li"><div class="t">Banklinjer</div>${t.bank ? pille("accent", t.bank) : "–"}</div><div class="li"><div class="t">Spørgsmål og beskeder</div>${t.spm ? pille("accent", t.spm) : "–"}</div></div></div>
       <div class="kort"><h2>Bank og moms</h2><div class="liste mt-1">${(K.bankst || []).map((b) => `<div class="li"><div class="t">${E(b.bank)}</div><span>${b.gyldig_til ? "samtykke til " + dk(b.gyldig_til) : E(b.status)}</span></div>`).join("") || `<div class="li"><div class="t">Bankforbindelse</div><span>Ikke koblet til</span></div>`}<div class="li"><div class="t">Moms</div>${t.moms ? pille(t.mk, E(t.moms)) : "Intet at indberette"}</div></div></div></div>`,
     posteringer: `<div class="kort tabeldel"><div class="tabel"><div class="r rpo h"><div>Nr.</div><div>Dato</div><div>Tekst</div><div>Konto</div><div class="b">Beløb</div><div>Bogført af</div><div></div></div>

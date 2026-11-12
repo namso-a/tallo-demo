@@ -1,7 +1,7 @@
 // Tallos app til kunden: computer og telefon. Skærmene er de godkendte fra mockuppen (system/design/platform);
 // data kommer fra kunde_data(), og hver handling kalder en funktion i databasen, der selv tjekker adgang og regler.
-import { DEMO, Fejl, LOKALT, logUd, rpc, sb, sendBilag, session, virksomheder } from "../felles/data.js?v=20261106174813";
-import { SUPABASE_URL } from "../felles/config.js?v=20261106174813";
+import { DEMO, Fejl, LOKALT, logUd, rpc, sb, sendBilag, session, virksomheder } from "../felles/data.js?v=20261112195147";
+import { SUPABASE_URL } from "../felles/config.js?v=20261112195147";
 
   let T, V, IDAG, VID, BRUGER, FIRMAER = [];
   const E = F.esc, IC = F.ICON;
@@ -373,7 +373,7 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261106174813";
     const f = (l, v) => `<div class="felt"><label>${l}</label><div class="vaerdi">${E(v) || "–"}</div></div>`;
     const ind = {
       firma: `<div class="gitter g2"><div class="stak"><div class="kort"><div class="kort-hoved"><h2>Firmaoplysninger</h2></div><div class="gitter g2">${f("Navn", V.navn)}${f("CVR", V.cvr)}${f("Adresse", V.adresse)}${f("Bilagsadresse", V.bilagsadresse)}${f("Moms afregnes", (MOMSPERIODE[V.momsperiode] || "").replace(/^./, (c) => c.toUpperCase()))}${S.mitid?.dansk ? f("Bekræftet med MitID", S.mitid.bekraeftet ? F.datoLang(String(S.mitid.bekraeftet).slice(0, 10)) : "Ikke endnu") : ""}</div>
-        <div class="raekke mt-3"><button class="knap" data-act="skriv">Ret noget</button>${S.mitid?.dansk && !S.mitid.bekraeftet ? '<button class="knap" data-act="mitid-side">Bekræft med MitID</button>' : ""}</div></div>${konto()}</div><div class="stak">${abonnement()}</div></div>`,
+        <div class="raekke mt-3"><button class="knap" data-act="skriv">Ret noget</button>${S.mitid?.dansk && !S.mitid.bekraeftet ? '<button class="knap" data-act="mitid-side">Bekræft med MitID</button>' : ""}</div></div>${suppl()}${konto()}</div><div class="stak">${abonnement()}</div></div>`,
       fakturaer: `<div class="gitter g2"><div class="kort"><div class="kort-hoved"><h2>Udseende</h2></div><div class="raekke"><span class="flogo stor" style="background:${E(V.farve)}">${initialer(V.kort)}</span><b>Logo og farve på fakturaen</b></div>
           <div class="farver mt-2">${["#c98a3b", "#4b3aa6", "#1f7a4a", "#141414", "#2b55d6"].map((c, i) => `<button class="farve" data-act="farve" data-farve="${c}" style="background:${c}" aria-label="Farve ${i + 1}" aria-pressed="${V.farve === c}"></button>`).join("")}</div></div>
         <div class="kort"><div class="kort-hoved"><h2>Betaling og rykkere</h2></div><div class="liste">
@@ -388,6 +388,17 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261106174813";
       konti: S.indTab === "konti" ? kontiFane() : "",
     };
     return `<div class="faner" role="tablist">${tabs.map(([k, t]) => `<button role="tab" aria-selected="${S.indTab === k}" data-act="indtab" data-t="${k}">${t}</button>`).join("")}</div><div class="mt-3">${ind[S.indTab] ?? ind.firma}</div>`;
+  }
+
+  // Supplerende stamoplysninger (BEK 97 § 4 b, stk. 2): SE- og GLN-numre, som kunden selv skriver. Fra 2028 kraever
+  // tilfoejelse og fjernelse MitID; databasen haandhaever det og svarer med en tekst, appen viser.
+  function suppl() {
+    const navn = { se: "SE-nummer", gln: "GLN-nummer" };
+    return `<div class="kort"><div class="kort-hoved"><h2>SE- og GLN-numre</h2></div>
+      <p class="not">Har firmaet et SE-nummer ud over CVR-nummeret eller et GLN-nummer (lokationsnummer), kan du skrive det her. De fleste har ingen.</p>
+      ${(S.suppl || []).length ? `<div class="liste">${S.suppl.map((x) => `<div class="li"><div class="t"><b>${navn[x.type]}</b><small>${E(x.nummer)}</small></div><button class="knap lille" data-act="suppl-fjern" data-id="${E(x.id)}">Fjern</button></div>`).join("")}</div>` : ""}
+      <div class="raekke mt-2"><select class="inp auto" id="suppl-type" aria-label="Type"><option value="se">SE-nummer</option><option value="gln">GLN-nummer</option></select>
+        <input class="inp" id="suppl-nr" inputmode="numeric" autocomplete="off" aria-label="Nummer" placeholder="Nummer"><button class="knap lille" data-act="suppl-tilfoej">Tilføj</button></div></div>`;
   }
 
   // Abonnement og data: under Firma.
@@ -615,7 +626,7 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261106174813";
     V = T.virksomhed; IDAG = T.idag;
     if (!V.ejer) V.ejer = BRUGER.navn || "";
     // Kaldene er uafhaengige af hinanden og koeres samtidig (foer: et ad gangen, og siden var hvid imens).
-    const [bank, udkast, udtraek, nh, pk, skiftet, vtm, mitid, def, ef, pen, bk] = await Promise.all([
+    const [bank, udkast, udtraek, nh, pk, skiftet, vtm, mitid, def, ef, pen, bk, sup] = await Promise.all([
       rpc("bankforbindelse_status", { p_virksomhed: VID }).catch(() => []),
       rpc("kunde_udkast", { p_virksomhed: VID }).catch(() => []),
       sb.from("udtraek_bestilling").select("id, type, fra, til, status, sti, bestilt_tid").eq("virksomhed_id", VID)
@@ -628,8 +639,9 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261106174813";
       sb.from("debitor").select("id, ean, peppol_id, efaktura_format").eq("virksomhed_id", VID),
       sb.from("efaktura_forsendelse").select("faktura_id, status, modtager, haendelser").eq("virksomhed_id", VID),
       sb.from("penhed").select("pnummer, navn, adresse_vej, adresse_husnr, adresse_postnr, adresse_by").eq("virksomhed_id", VID).eq("aktiv", true),
-      sb.from("bankkonto").select("id, navn, reg_nr, kontonr, iban").eq("virksomhed_id", VID)]);
-    S.mitid = mitid;
+      sb.from("bankkonto").select("id, navn, reg_nr, kontonr, iban").eq("virksomhed_id", VID),
+      sb.from("supplerende_nummer").select("id, type, nummer").eq("virksomhed_id", VID).order("oprettet")]);
+    S.mitid = mitid; S.suppl = sup.data || [];
     S.dEf = Object.fromEntries((def.data || []).map((d) => [d.id, d])); S.nhOpslag ||= {};
     S.ef = Object.fromEntries((ef.data || []).map((x) => [x.faktura_id, x]));
     S.penheder = pen.data || []; S.bankkonti = (bk.data || []).filter((b) => b.iban || (b.reg_nr && b.kontonr));
@@ -1045,6 +1057,13 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261106174813";
       return opdater(`${v("navn")} er oprettet`);
     }
     if (a === "kontoudtog") { const ku = await rpc("kontoudtog", { p_debitor: el.dataset.k }); return aabn({ type: "ku", ku }); }
+    if (a === "suppl-tilfoej") {
+      const type = document.getElementById("suppl-type")?.value, nr = (document.getElementById("suppl-nr")?.value || "").replace(/[\s-]/g, "");
+      if (!nr) return F.toast("Skriv nummeret");
+      await rpc("tilfoej_supplerende_nummer", { p_virksomhed: VID, p_type: type, p_nummer: nr });
+      return opdater(`${type === "se" ? "SE-nummeret" : "GLN-nummeret"} er gemt`);
+    }
+    if (a === "suppl-fjern") { await rpc("fjern_supplerende_nummer", { p_id: el.dataset.id }); return opdater("Nummeret er fjernet"); }
     if (a === "farve") { await rpc("saet_fakturadesign", { p_virksomhed: VID, p_farve: el.dataset.farve }); return opdater("Farven er gemt"); }
     if (a === "sw-rykker") { await rpc("saet_indstillinger", { p_virksomhed: VID, p_auto_paamindelse: !V.auto_paamindelse }); return opdater(V.auto_paamindelse ? "Påmindelser er slået fra" : "Påmindelser er slået til"); }
     if (a === "bestil") {
