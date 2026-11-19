@@ -1,7 +1,7 @@
 // Tallos app til kunden: computer og telefon. Skærmene er de godkendte fra mockuppen (system/design/platform);
 // data kommer fra kunde_data(), og hver handling kalder en funktion i databasen, der selv tjekker adgang og regler.
-import { DEMO, Fejl, LOKALT, logUd, rpc, sb, sendBilag, session, virksomheder } from "../felles/data.js?v=20261119200902";
-import { SUPABASE_URL } from "../felles/config.js?v=20261119200902";
+import { DEMO, Fejl, LOKALT, logUd, rpc, sb, sendBilag, session, virksomheder } from "../felles/data.js?v=20261119201114";
+import { SUPABASE_URL } from "../felles/config.js?v=20261119201114";
 
   let T, V, IDAG, VID, BRUGER, FIRMAER = [];
   const E = F.esc, IC = F.ICON;
@@ -306,7 +306,7 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261119200902";
         ${T.tilbud.length ? "" : '<div class="tom">Ingen tilbud endnu.</div>'}${[...T.tilbud].sort((a, b) => (a.dato < b.dato ? 1 : a.dato > b.dato ? -1 : String(b.nr).localeCompare(String(a.nr), "da", { numeric: true }))).map((t) => `<div class="r rf" role="button" tabindex="0" data-act="aabn-tb" data-nr="${t.nr}"><div class="tal">${t.nr}</div><div class="tekst">${E(kunde(t.kunde).navn)}<small>${E(t.linjer[0].tekst)}${t.linjer.length > 1 ? " m.m." : ""}</small></div><div class="c-dato tal">${F.dato(t.dato)}</div><div class="c-dato tal">${F.dato(t.gyldig)}</div><div>${pille(...TBST[t.status])}</div><div class="b tal">${F.kr(t.total)}</div></div>`).join("")}</div></div>`;
     } else if (S.salgTab === "abonnementer") {
       ind = `<div class="kort tabeldel mt-3"><div class="tabel"><div class="r ra h"><div>Kunde</div><div>Hvad</div><div>Hvor ofte</div><div class="c-dato">Næste</div><div class="b">Kr. pr. gang</div><div></div></div>
-        ${T.abonnementer.map((a) => `<div class="r ra"><div class="tekst">${E(kunde(a.kunde).navn)}<small>${a.sendt} sendt</small></div><div class="tekst">${E(a.linjer[0].tekst)}</div><div>${E(a.hvor_ofte)}</div><div class="c-dato tal">${a.status === "stoppet" ? "Stoppet" : F.dato(a.naeste)}</div><div class="b tal">${F.kr(a.total)}</div><div class="b">${a.status === "stoppet" ? "" : `<button class="knap lille" data-act="stop-abon" data-id="${a.id}">Stop</button>`}</div></div>`).join("")}</div>
+        ${T.abonnementer.map((a) => `<div class="r ra"><div class="tekst">${E(kunde(a.kunde).navn)}<small>${a.sendt} sendt</small></div><div class="tekst">${E(a.linjer[0].tekst)}</div><div>${E(a.hvor_ofte)}</div><div class="c-dato tal">${a.status === "stoppet" ? "Stoppet" : F.dato(a.naeste)}</div><div class="b tal">${F.kr(a.total)}</div><div class="b">${a.status === "stoppet" ? "" : (S.stopVent === a.id ? `<button class="knap lille roed-tekst" data-act="stop-abon" data-id="${a.id}">Stop for altid?</button>` : `<button class="knap lille" data-act="stop-vent" data-id="${a.id}">Stop</button>`)}</div></div>`).join("")}</div>
         ${T.abonnementer.length ? "" : '<div class="tom">Ingen faste fakturaer endnu.</div>'}</div>`;
     } else {
       ind = `<div class="kort tabeldel mt-3"><div class="tabel"><div class="r rk2 h"><div>Kunde</div><div class="c-kat">By</div><div class="b">Fakturaer</div><div class="b">Faktureret i år</div><div class="b">Ubetalt</div><div></div></div>
@@ -473,7 +473,7 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261119200902";
     const tabs = [["firma", "Firma"], ["beskeder", "Beskeder"], ["fakturaer", "Fakturaer"], ["forbindelser", "Forbindelser"], ...(selv() ? [["konti", "Kategorier"]] : [])];
     const f = (l, v) => `<div class="felt"><label>${l}</label><div class="vaerdi">${E(v) || "–"}</div></div>`;
     const ind = {
-      firma: `<div class="gitter g2"><div class="stak"><div class="kort"><div class="kort-hoved"><h2>Firmaoplysninger</h2></div><div class="gitter g2">${f("Navn", V.navn)}${f("CVR", V.cvr)}${f("Adresse", V.adresse)}${f("Bilagsadresse", V.bilagsadresse)}${f("Moms afregnes", (MOMSPERIODE[V.momsperiode] || "").replace(/^./, (c) => c.toUpperCase()))}${S.mitid?.dansk ? f("Bekræftet med MitID", S.mitid.bekraeftet ? F.datoLang(String(S.mitid.bekraeftet).slice(0, 10)) : "Ikke endnu") : ""}</div>
+      firma: `<div class="gitter g2"><div class="stak"><div class="kort"><div class="kort-hoved"><h2>Firmaoplysninger</h2></div><div class="gitter g2">${f("Navn", V.navn)}${f("CVR", V.cvr)}${f("Adresse", V.adresse)}${f("Moms afregnes", (MOMSPERIODE[V.momsperiode] || "").replace(/^./, (c) => c.toUpperCase()))}${S.mitid?.dansk ? f("Bekræftet med MitID", S.mitid.bekraeftet ? F.datoLang(String(S.mitid.bekraeftet).slice(0, 10)) : "Ikke endnu") : ""}</div>
         <div class="raekke mt-3"><button class="knap" data-act="skriv">Ret noget</button>${S.mitid?.dansk && !S.mitid.bekraeftet ? '<button class="knap" data-act="mitid-side">Bekræft med MitID</button>' : ""}</div></div>${konto()}${suppl()}</div><div class="stak">${abonnement()}</div></div>`,
       fakturaer: `<div class="gitter g2"><div class="kort"><div class="kort-hoved"><h2>Udseende</h2></div><div class="raekke"><span class="flogo stor" style="background:${E(V.farve)}">${initialer(V.kort)}</span><b>Logo og farve på fakturaen</b></div>
           <div class="farver mt-2">${["#c98a3b", "#4b3aa6", "#8a3b5c", "#141414", "#2b55d6"].map((c, i) => `<button class="farve" data-act="farve" data-farve="${c}" style="background:${c}" aria-label="Farve ${i + 1}" aria-pressed="${V.farve === c}"></button>`).join("")}</div></div>
@@ -1073,7 +1073,9 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261119200902";
       const fra = await rpc("kunde_skift_pakke", { p_virksomhed: VID, p_pakke: p });
       return opdater(fra ? `Du skifter til ${navn} fra ${F.datoLang(fra)}` : "Skiftet er fortrudt");
     }
+    if (a === "stop-vent") { S.stopVent = id; render(); setTimeout(() => { if (S.stopVent === id) { S.stopVent = null; render(); } }, 4000); return; }
     if (a === "stop-abon") {
+      S.stopVent = null;
       if (!confirm("Stop den faste faktura? Der sendes ikke flere. Sendte fakturaer berøres ikke.")) return;
       await rpc("stop_abonnement", { p_abonnement: el.dataset.id });
       return opdater("Den faste faktura er stoppet");

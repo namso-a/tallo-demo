@@ -1,6 +1,6 @@
 // Forbindelsen til Tallos database. Al logik ligger i databasen (RLS og funktioner); appen kalder kun.
-import { createClient } from "../vendor/supabase-2.117.2.js?v=20261119200902";
-import { DEMO, LOKALT, SUPABASE_ANON, SUPABASE_URL } from "./config.js?v=20261119200902";
+import { createClient } from "../vendor/supabase-2.117.2.js?v=20261119201114";
+import { DEMO, LOKALT, SUPABASE_ANON, SUPABASE_URL } from "./config.js?v=20261119201114";
 
 // Kundens app, arbejdsbordet og intern ligger paa samme adresse lokalt; hver sit login, saa de ikke overskriver hinanden.
 const APP = location.pathname.includes("/bord") ? "bord" : location.pathname.includes("/intern") ? "intern" : "app";
