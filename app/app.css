@@ -288,3 +288,32 @@ fieldset.rent { border: 0; padding: 0; margin-left: 0; margin-right: 0; }
 .kvalg-liste button b { display: block; font-weight: 500; overflow-wrap: anywhere; }
 .kvalg-liste button small { color: var(--daempet); font-size: var(--t-lille); }
 .kvalg-gr { padding: 8px 10px 4px; font-size: var(--t-lille); color: var(--daempet); }
+
+/* Fakturaen er selve formularen (19. nov 2026, Mohammed og Othman): man retter direkte på fakturaen, som i Dinero. */
+.ed-redig { max-width: 820px; margin: 0 auto; width: 100%; }
+.fdok.redig { font-size: 14px; padding: 28px 30px 22px; }
+.fdok.redig .fk { margin-bottom: 18px; }
+.fdok.redig .fk .kvalg { max-width: 380px; }
+.fdok.redig .kunde-adr { display: block; margin-top: 6px; color: var(--daempet); }
+.el-hoved, .el { display: grid; grid-template-columns: minmax(0, 1fr) 76px 110px 104px 32px; gap: 8px; align-items: center; }
+.el-hoved { font-weight: 600; border-bottom: 1.5px solid var(--tekst); padding: 6px 0; font-size: 12.5px; }
+.el-hoved span:nth-child(n+2):not(:last-child) { text-align: right; }
+.el { padding: 10px 0; border-bottom: 1px solid var(--lineal2); align-items: start; }
+.el-hvad { display: grid; gap: 6px; min-width: 0; }
+.el-tal span { display: none; }
+.el-tal input { text-align: right; }
+.el-bel { text-align: right; padding-top: 11px; font-variant-numeric: tabular-nums; }
+.el-x { margin-top: 4px; }
+.fdok.redig .fs { margin-top: 18px; }
+.ed-mere { max-width: 820px; margin: 18px auto 0; width: 100%; }
+.ed-mere summary { cursor: pointer; color: var(--accent); font-weight: 500; padding: 6px 0; }
+.ed-mere-ind { padding-top: 10px; }
+@media (max-width: 700px) {
+  .fdok.redig { padding: 18px 14px; }
+  .el-hoved { display: none; }
+  .el { grid-template-columns: 1fr 1fr 32px; grid-template-areas: "hvad hvad x" "antal pris pris" "bel bel bel"; }
+  .el-hvad { grid-area: hvad; } .el-x { grid-area: x; }
+  .el-tal:nth-of-type(1) { grid-area: antal; } .el-tal:nth-of-type(2) { grid-area: pris; }
+  .el-tal span { display: block; font-size: var(--t-lille); color: var(--daempet); margin-bottom: 4px; }
+  .el-bel { grid-area: bel; padding-top: 0; font-weight: 600; }
+}

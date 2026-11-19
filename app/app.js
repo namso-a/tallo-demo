@@ -1,7 +1,7 @@
 // Tallos app til kunden: computer og telefon. Skærmene er de godkendte fra mockuppen (system/design/platform);
 // data kommer fra kunde_data(), og hver handling kalder en funktion i databasen, der selv tjekker adgang og regler.
-import { DEMO, Fejl, LOKALT, logUd, rpc, sb, sendBilag, session, virksomheder } from "../felles/data.js?v=20261119193015";
-import { SUPABASE_URL } from "../felles/config.js?v=20261119193015";
+import { DEMO, Fejl, LOKALT, logUd, rpc, sb, sendBilag, session, virksomheder } from "../felles/data.js?v=20261119194058";
+import { SUPABASE_URL } from "../felles/config.js?v=20261119194058";
 
   let T, V, IDAG, VID, BRUGER, FIRMAER = [];
   const E = F.esc, IC = F.ICON;
@@ -606,9 +606,9 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261119193015";
 
   // Kunden på fakturaen (19. nov 2026): ét felt, der finder både dine egne kunder og virksomheder i CVR-registret,
   // mens du skriver navn eller CVR-nummer. Vælger du en fra CVR, oprettes kunden med adresse med det samme.
-  function kundeFelt(e) {
+  function kundeFelt(e, etiket = "Kunde") {
     const k = kunde(e.kunde);
-    return `<div class="felt kvalg"><label for="ek-s" class="raekke mellem">Kunde <a href="#" data-act="ny-kunde" class="link">Udfyld selv</a></label>
+    return `<div class="felt kvalg"><label for="ek-s" class="raekke mellem">${etiket} <a href="#" data-act="ny-kunde" class="link">Udfyld selv</a></label>
       <input class="inp" id="ek-s" role="combobox" aria-expanded="false" aria-controls="kvalg-liste" autocomplete="off"
         placeholder="Skriv navn eller CVR-nummer" value="${E(k?.navn || "")}">
       <div class="kvalg-liste" id="kvalg-liste" role="listbox" hidden></div></div>`;
@@ -663,19 +663,40 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261119193015";
     const nhBesked = nh?.kan_modtage ? `<div class="kort tonet mt-3" role="alert"><b>${E(k.navn)} kan modtage e-faktura</b>
       <p class="not">Kunden er tilmeldt Nemhandel. Send fakturaen som e-faktura i stedet for PDF, så kommer den direkte ind i kundens regnskab.</p>
       ${adrValg(nh.adresser, "ed-adr")}<button class="knap lille mt-2" data-act="brug-ef">Send som e-faktura</button></div>` : "";
-    return `<div class="sh"><div class="faner" role="tablist">${[["faktura", "Faktura"], ["tilbud", "Tilbud"]].map(([t, n]) => `<button role="tab" aria-selected="${e.type === t}" data-act="ed-type" data-t="${t}">${n}</button>`).join("")}</div><button class="ikonknap" data-act="luk" aria-label="Luk">${IC.luk}</button></div>
-      <div class="sk editor-grid"><div id="edform">${kundeFelt(e)}${nhBesked}
-        ${tb ? "" : `<div class="gitter g2 mt-2"><div class="felt"><label for="eref">Reference</label><input class="inp" id="eref" data-ed="reference" value="${E(e.reference || "")}" placeholder="Fx ordrenummer"></div>
-          <div class="felt"><label for="elev">Leveringsdato</label><input class="inp" id="elev" type="date" data-ed="levering" value="${E(e.levering || "")}"></div></div>`}
-        ${tb ? "" : `<div class="felt mt-2"><label for="eg">Gentag</label><select class="inp" id="eg" data-ed="gentag">${["Ikke gentaget", "Hver uge", "Hver måned", "Hvert kvartal"].map((g) => `<option ${e.gentag === g ? "selected" : ""}>${g}</option>`).join("")}</select></div>`}
+    const vtValg = (l, i) => `<select class="inp" data-ed="vt" data-i="${i}" aria-label="Vare eller ydelse">${T.varetyper.map((v) =>
+      `<option value="${v.id}" ${v.id === l.vt ? "selected" : ""}>${E(v.navn)}</option>`).join("")}</select>`;
+    const linjer = e.linjer.map((l, i) => `<div class="el">
+        <div class="el-hvad">${vtValg(l, i)}<input class="inp" data-ed="tekst" data-i="${i}" value="${E(l.tekst || "")}" placeholder="Tekst på fakturaen (valgfri)" aria-label="Tekst på linjen"></div>
+        <label class="el-tal"><span>Antal</span><input class="inp tal" data-ed="antal" data-i="${i}" value="${E(l.antal)}" inputmode="decimal"></label>
+        <label class="el-tal"><span>Pris${e.inkl ? " inkl. moms" : ""}</span><input class="inp tal" data-ed="pris" data-i="${i}" value="${E(l.pris)}" inputmode="decimal"></label>
+        <div class="el-bel tal" id="lb-${i}">${F.kr((+l.antal || 0) * (+l.pris || 0))}</div>
+        <button class="ikonknap el-x" data-act="fjern-l" data-i="${i}" aria-label="Fjern linje">${IC.luk}</button></div>`).join("");
+    const afs = tb ? null : afsValg(e);
+    const dok = `<div class="fdok redig">
+      <div class="fh"><div><span class="flogo" style="background:${E(V.farve)}">${initialer(V.kort)}</span><b>${E(afs?.navn || V.navn)}</b><br>${E(afs?.adresse || V.adresse)}<br>CVR ${V.cvr}</div>
+        <div class="fn">${tb ? "TILBUD" : "FAKTURA"}<br><b>Nr. ${f.nr}</b><br>${F.datoLang(f.dato)}</div></div>
+      <div class="fk">${kundeFelt(e, "Til")}${k && (k.by || k.cvr) ? `<small class="kunde-adr">${[k.cvr ? "CVR " + k.cvr : "", k.by].filter(Boolean).map(E).join(" · ")}</small>` : ""}</div>
+      <div class="el-hoved"><span>Beskrivelse</span><span>Antal</span><span>Pris</span><span>Beløb</span><span></span></div>${linjer}
+      <button class="knap lille mt-2" data-act="ny-l">${IC.plus} Tilføj linje</button>
+      <div class="fs" id="ed-sum">${edSum(f)}</div>
+      <div class="fb"><div>${tb ? `Tilbuddet gælder til ${F.datoLang(f.gyldig)}` : `Betalingsfrist ${F.datoLang(f.forfald)}`}</div><div></div></div></div>`;
+    const mere = `<details class="ed-mere" ${S.edMere ? "open" : ""}><summary data-act="ed-mere">Flere valg</summary><div class="ed-mere-ind">
+        ${tb ? "" : `<div class="gitter g2"><div class="felt"><label for="eref">Reference</label><input class="inp" id="eref" data-ed="reference" value="${E(e.reference || "")}" placeholder="Fx ordrenummer"></div>
+          <div class="felt"><label for="elev">Leveringsdato</label><input class="inp" id="elev" type="date" data-ed="levering" value="${E(e.levering || "")}"></div></div>
+          <div class="felt mt-2"><label for="eg">Gentag</label><select class="inp" id="eg" data-ed="gentag">${["Ikke gentaget", "Hver uge", "Hver måned", "Hvert kvartal"].map((g) => `<option ${e.gentag === g ? "selected" : ""}>${g}</option>`).join("")}</select></div>`}
         ${afsFelter(e)}
-        <label class="flueboks mt-3"><input type="checkbox" data-ed="inkl" ${e.inkl ? "checked" : ""}> Priserne er inkl. moms</label>
-        <div class="not mt-2">Linjer</div>${e.linjer.map((l, i) => `<div class="ed-linje"><select class="inp" data-ed="vt" data-i="${i}" aria-label="Vare">${T.varetyper.map((v) => `<option value="${v.id}" ${v.id === l.vt ? "selected" : ""}>${E(v.navn)}</option>`).join("")}</select>
-          <input class="inp tal" data-ed="antal" data-i="${i}" value="${E(l.antal)}" inputmode="decimal" aria-label="Antal"><input class="inp tal" data-ed="pris" data-i="${i}" value="${E(l.pris)}" inputmode="decimal" aria-label="Pris"><button class="ikonknap" data-act="fjern-l" data-i="${i}" aria-label="Fjern linje">${IC.luk}</button></div>
-          <input data-ed="tekst" data-i="${i}" value="${E(l.tekst || "")}" placeholder="Tekst (valgfri)" aria-label="Tekst på linjen" class="inp mt-1">`).join("")}
-        <button class="knap lille mt-2" data-act="ny-l">${IC.plus} Tilføj linje</button></div>
-        <div><div id="prev">${edDok(e)}</div></div></div>
+        <label class="flueboks mt-3"><input type="checkbox" data-ed="inkl" ${e.inkl ? "checked" : ""}> Priserne er inkl. moms</label></div></details>`;
+    return `<div class="sh"><div class="faner" role="tablist">${[["faktura", "Faktura"], ["tilbud", "Tilbud"]].map(([t, n]) => `<button role="tab" aria-selected="${e.type === t}" data-act="ed-type" data-t="${t}">${n}</button>`).join("")}</div><button class="ikonknap" data-act="luk" aria-label="Luk">${IC.luk}</button></div>
+      <div class="sk ed-redig">${nhBesked}${dok}${mere}</div>
       <div class="sf"><span></span><div class="raekke"><span class="not" id="sendt-som">${sendes}</span><button class="knap p" data-act="send-f">${IC.send} ${tb ? "Opret tilbud" : e.gentag && e.gentag !== "Ikke gentaget" ? "Send og gentag" : "Send faktura"}</button></div></div>`;
+  }
+  const edSum = (f) => `<div><span>Beløb uden moms</span><span>${F.kr(f.netto)}</span></div><div><span>Moms (25 %)</span><span>${F.kr(f.moms)}</span></div><div class="t"><span>I alt DKK</span><span>${F.kr(f.total)}</span></div>`;
+  // Når et tal ændres, opdateres beløbene på stedet, så markøren bliver, hvor den er.
+  function edOpd() {
+    const p = document.getElementById("prev");
+    if (p) { p.innerHTML = edDok(S.ed); return; }
+    S.ed.linjer.forEach((l, i) => { const c = document.getElementById("lb-" + i); if (c) c.textContent = F.kr((+l.antal || 0) * (+l.pris || 0)); });
+    const sm = document.getElementById("ed-sum"); if (sm) sm.innerHTML = edSum(regn(S.ed));
   }
   // ---------------------------------------------------------------- skal/rendering ----
   const n_aabne = () => aabne().length;
@@ -1274,6 +1295,7 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261119193015";
     if (a === "mitid-nej") { e.preventDefault(); S.mitidKode = null; return logUd(); }
     if (a === "aabn-f") return aabn({ type: "f", nr: +el.dataset.nr });
     if (a === "skriv") return aabn({ type: "besked" });
+    if (a === "ed-mere") { S.edMere = !S.edMere; return; }
     if (a === "valg-push" || a === "valg-mail") return valgSkift(a === "valg-push" ? "push" : "mail");
     if (a === "vaelg-kunde" && S.ed) { S.ed.kunde = id; S.kq = ""; S.kcvr = null; return render(); }
     if (a === "cvr-kunde" && S.ed) return nyKundeFraCvr(S.kcvrVist?.[+el.dataset.i]);
@@ -1336,7 +1358,7 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261119193015";
     const ed = e.target.dataset.ed; if (!ed || !S.ed) return;
     const i = +e.target.dataset.i;
     if (ed === "gentag") { S.ed.gentag = e.target.value; S.keepFocus = true; render(); S.keepFocus = false; return; }
-    if (ed === "afsNavn" || ed === "afsP" || ed === "afsBank") { S.ed[ed] = e.target.value; document.getElementById("prev").innerHTML = edDok(S.ed); return; }
+    if (ed === "afsNavn" || ed === "afsP" || ed === "afsBank") { S.ed[ed] = e.target.value; S.keepFocus = true; render(); S.keepFocus = false; return; }
     if (ed === "kunde") { S.ed.kunde = e.target.value; S.keepFocus = true; render(); S.keepFocus = false; return; }
     else if (ed === "vt") { const vt = T.varetyper.find((v) => v.id === e.target.value); S.ed.linjer[i].vt = vt.id; S.ed.linjer[i].pris = medMoms(vt, vt.pris); const p = document.querySelector(`[data-ed="pris"][data-i="${i}"]`); if (p) p.value = S.ed.linjer[i].pris; }
     else if (ed === "inkl") {
@@ -1347,7 +1369,7 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261119193015";
     else if (ed === "tekst") S.ed.linjer[i].tekst = e.target.value;
     else if (ed === "reference" || ed === "levering") S.ed[ed] = e.target.value;
     else S.ed.linjer[i][ed] = e.target.value.replace(",", ".");
-    document.getElementById("prev").innerHTML = edDok(S.ed);
+    edOpd();
     const k = kunde(S.ed.kunde); document.getElementById("sendt-som").textContent = S.ed.type !== "tilbud" && efAdr(k) ? "Sendes som e-faktura" : "Sendes som PDF på mail";
   });
   document.addEventListener("change", async (e) => {
