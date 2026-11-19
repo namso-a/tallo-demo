@@ -1,7 +1,7 @@
 // Tallos app til kunden: computer og telefon. Skærmene er de godkendte fra mockuppen (system/design/platform);
 // data kommer fra kunde_data(), og hver handling kalder en funktion i databasen, der selv tjekker adgang og regler.
-import { DEMO, Fejl, LOKALT, logUd, rpc, sb, sendBilag, session, virksomheder } from "../felles/data.js?v=20261119191042";
-import { SUPABASE_URL } from "../felles/config.js?v=20261119191042";
+import { DEMO, Fejl, LOKALT, logUd, rpc, sb, sendBilag, session, virksomheder } from "../felles/data.js?v=20261119192512";
+import { SUPABASE_URL } from "../felles/config.js?v=20261119192512";
 
   let T, V, IDAG, VID, BRUGER, FIRMAER = [];
   const E = F.esc, IC = F.ICON;
@@ -554,6 +554,57 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261119191042";
       <div class="sf"><span></span><button class="knap p" data-act="gem-kunde">Opret kunde</button></div>`;
   }
 
+  // Kunden på fakturaen (19. nov 2026): ét felt, der finder både dine egne kunder og virksomheder i CVR-registret,
+  // mens du skriver navn eller CVR-nummer. Vælger du en fra CVR, oprettes kunden med adresse med det samme.
+  function kundeFelt(e) {
+    const k = kunde(e.kunde);
+    return `<div class="felt kvalg"><label for="ek-s" class="raekke mellem">Kunde <a href="#" data-act="ny-kunde" class="link">Udfyld selv</a></label>
+      <input class="inp" id="ek-s" role="combobox" aria-expanded="false" aria-controls="kvalg-liste" autocomplete="off"
+        placeholder="Skriv navn eller CVR-nummer" value="${E(k?.navn || "")}">
+      <div class="kvalg-liste" id="kvalg-liste" role="listbox" hidden></div></div>`;
+  }
+  function kundeForslag() {
+    const q = (S.kq || "").trim().toLowerCase(), boks = document.getElementById("kvalg-liste"), inp = document.getElementById("ek-s");
+    if (!boks) return;
+    const egne = q ? T.kunder.filter((x) => x.navn.toLowerCase().includes(q) || (x.cvr || "").includes(q.replace(/\s/g, ""))).slice(0, 5) : T.kunder.slice(0, 5);
+    const kendte = new Set(T.kunder.map((x) => x.cvr).filter(Boolean));
+    const cvr = (S.kcvr?.q === q ? S.kcvr.r : []).filter((v) => !kendte.has(v.cvr)); S.kcvrVist = cvr;
+    const raekke = (attr, navn, under) => `<button type="button" role="option" ${attr}><b>${E(navn)}</b>${under ? `<small>${E(under)}</small>` : ""}</button>`;
+    const html = egne.map((x) => raekke(`data-act="vaelg-kunde" data-id="${x.id}"`, x.navn, x.cvr ? `CVR ${x.cvr}` : "Din kunde")).join("")
+      + (cvr.length ? `<div class="kvalg-gr">Fra CVR-registret</div>` + cvr.map((v, i) => raekke(`data-act="cvr-kunde" data-i="${i}"`, v.navn,
+          [`CVR ${v.cvr}`, v.adresse_by].filter(Boolean).join(" · "))).join("") : "")
+      + (S.kcvr?.venter ? `<div class="kvalg-gr">Søger i CVR-registret …</div>` : "")
+      + (!egne.length && !cvr.length && !S.kcvr?.venter && q.length >= 2 ? `<div class="kvalg-gr">Ingen fundet. Tryk "Udfyld selv".</div>` : "");
+    boks.innerHTML = html; boks.hidden = !html; inp?.setAttribute("aria-expanded", String(!!html));
+  }
+  let kTimer = null;
+  function kundeSoeg(q) {
+    S.kq = q; clearTimeout(kTimer);
+    const t = q.trim();
+    S.kcvr = t.length >= 2 ? { q: t.toLowerCase(), r: [], venter: true } : null;
+    kundeForslag();
+    if (!S.kcvr) return;
+    kTimer = setTimeout(async () => {
+      const body = /^\d{8}$/.test(t.replace(/\s/g, "")) ? { cvr: t.replace(/\s/g, "") } : { soeg: t };
+      const { data } = await sb.functions.invoke("cvr", { body }).catch(() => ({}));
+      if (S.kq !== q) return;
+      S.kcvr = { q: t.toLowerCase(), r: data?.resultater || (data?.navn ? [data] : []) };
+      kundeForslag();
+    }, 300);
+  }
+  // En virksomhed fra CVR bliver kunde med det samme. Nemhandel slås op samtidig (BEK 97 bilag 2 pkt. 8).
+  async function nyKundeFraCvr(v) {
+    if (!v) return;
+    const { data: fuld } = await sb.functions.invoke("cvr", { body: { cvr: v.cvr } }).catch(() => ({}));
+    const d = fuld?.navn ? fuld : v, nhF = d.nemhandel?.adresser?.[0]?.felter || {};
+    const { data, error } = await sb.from("debitor").insert({ virksomhed_id: VID, navn: d.navn, cvr: d.cvr,
+      adresse_vej: [d.adresse_vej, d.adresse_husnr].filter(Boolean).join(" ") || null, adresse_postnr: d.adresse_postnr || null,
+      adresse_by: d.adresse_by || null, ean: nhF.ean || null, peppol_id: nhF.peppol_id || null, efaktura_format: nhF.efaktura_format || null })
+      .select("id").single();
+    if (error) throw new Fejl(error.message);
+    S.ed.kunde = data.id; S.kq = ""; S.kcvr = null;
+    return opdater(`${d.navn} er oprettet som kunde`);
+  }
   function editor() {
     const e = S.ed, tb = e.type === "tilbud", f = regn(e), k = kunde(e.kunde);
     const ef = !tb && efAdr(k), nh = !tb && !ef && k?.cvr ? S.nhOpslag[k.cvr] : null;
@@ -563,7 +614,7 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261119191042";
       <p class="not">Kunden er tilmeldt Nemhandel. Send fakturaen som e-faktura i stedet for PDF, så kommer den direkte ind i kundens regnskab.</p>
       ${adrValg(nh.adresser, "ed-adr")}<button class="knap lille mt-2" data-act="brug-ef">Send som e-faktura</button></div>` : "";
     return `<div class="sh"><div class="faner" role="tablist">${[["faktura", "Faktura"], ["tilbud", "Tilbud"]].map(([t, n]) => `<button role="tab" aria-selected="${e.type === t}" data-act="ed-type" data-t="${t}">${n}</button>`).join("")}</div><button class="ikonknap" data-act="luk" aria-label="Luk">${IC.luk}</button></div>
-      <div class="sk editor-grid"><div id="edform"><div class="felt"><label for="ek" class="raekke mellem">Kunde <a href="#" data-act="ny-kunde" class="link">Ny kunde</a></label><select class="inp" id="ek" data-ed="kunde">${T.kunder.map((x) => `<option value="${x.id}" ${x.id === e.kunde ? "selected" : ""}>${E(x.navn)}</option>`).join("")}</select></div>${nhBesked}
+      <div class="sk editor-grid"><div id="edform">${kundeFelt(e)}${nhBesked}
         ${tb ? "" : `<div class="gitter g2 mt-2"><div class="felt"><label for="eref">Reference</label><input class="inp" id="eref" data-ed="reference" value="${E(e.reference || "")}" placeholder="Fx ordrenummer"></div>
           <div class="felt"><label for="elev">Leveringsdato</label><input class="inp" id="elev" type="date" data-ed="levering" value="${E(e.levering || "")}"></div></div>`}
         ${tb ? "" : `<div class="felt mt-2"><label for="eg">Gentag</label><select class="inp" id="eg" data-ed="gentag">${["Ikke gentaget", "Hver uge", "Hver måned", "Hvert kvartal"].map((g) => `<option ${e.gentag === g ? "selected" : ""}>${g}</option>`).join("")}</select></div>`}
@@ -1143,6 +1194,18 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261119191042";
     }
   }
 
+  // Kundefeltet på fakturaen: listen vises, når man trykker i feltet, og lukker ved klik udenfor eller Escape.
+  document.addEventListener("pointerdown", (e) => {
+    if (e.target.id === "ek-s") { setTimeout(() => { e.target.select(); kundeSoeg(""); }); return; }
+    const b = document.getElementById("kvalg-liste");
+    if (b && !b.hidden && !e.target.closest(".kvalg")) { b.hidden = true; document.getElementById("ek-s")?.setAttribute("aria-expanded", "false"); }
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.target.id !== "ek-s") return;
+    const b = document.getElementById("kvalg-liste");
+    if (e.key === "Escape" && b && !b.hidden) { e.stopPropagation(); b.hidden = true; }
+    if (e.key === "ArrowDown") { e.preventDefault(); b?.querySelector("button")?.focus(); }
+  });
   document.addEventListener("click", async (e) => {
     const sk = e.target.closest("[data-skjul]"); if (sk && VID) { localStorage.setItem(`tallo-skjul-${VID}-${sk.dataset.skjul}`, "1"); setTimeout(render, 300); }
     const el = e.target.closest("[data-act]"); if (!el) return;
@@ -1159,6 +1222,8 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261119191042";
     if (a === "mitid-nej") { e.preventDefault(); S.mitidKode = null; return logUd(); }
     if (a === "aabn-f") return aabn({ type: "f", nr: +el.dataset.nr });
     if (a === "skriv") return aabn({ type: "besked" });
+    if (a === "vaelg-kunde" && S.ed) { S.ed.kunde = id; S.kq = ""; S.kcvr = null; return render(); }
+    if (a === "cvr-kunde" && S.ed) return nyKundeFraCvr(S.kcvrVist?.[+el.dataset.i]);
     if (a === "ny-henv") return aabn({ type: "besked", h: "ny" });
     if (a === "aabn-h") return aabn({ type: "besked", h: id });
     if (a === "alle-ting") { S.alleTing = !S.alleTing; return render(); }
@@ -1213,6 +1278,7 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261119191042";
     if ((e.key === "Enter" || e.key === " ") && e.target.matches('[role="button"][tabindex]')) { e.preventDefault(); e.target.click(); }
   });
   document.addEventListener("input", (e) => {
+    if (e.target.id === "ek-s") return kundeSoeg(e.target.value);
     if (e.target.id === "q") { S.q = e.target.value; S.sideN = 30; document.getElementById("trliste").innerHTML = trListe(); return; }
     const ed = e.target.dataset.ed; if (!ed || !S.ed) return;
     const i = +e.target.dataset.i;

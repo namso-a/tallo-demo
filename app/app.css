@@ -278,3 +278,13 @@ fieldset.rent { border: 0; padding: 0; margin-left: 0; margin-right: 0; }
   .ov-hoved p .not { display: none; } }
 .skuffe .sk .felt + .felt { margin-top: 16px; }
 .skuffe .sh .ikonknap[data-act="skriv"] { font-size: 26px; line-height: 1; }
+
+/* Kundefeltet på fakturaen (19. nov 2026): egne kunder og CVR-registret i én liste */
+.kvalg { position: relative; }
+.kvalg-liste { position: absolute; z-index: 20; top: calc(100% + 4px); left: 0; right: 0; max-height: 340px; overflow: auto;
+  background: var(--kort); border: 1px solid var(--lineal); border-radius: var(--radius-lille); box-shadow: var(--kort-skygge); padding: 6px; }
+.kvalg-liste button { display: block; width: 100%; padding: 9px 10px; border: 0; border-radius: 10px; background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.kvalg-liste button:hover, .kvalg-liste button:focus-visible { background: var(--raekke-hover); outline: none; }
+.kvalg-liste button b { display: block; font-weight: 500; overflow-wrap: anywhere; }
+.kvalg-liste button small { color: var(--daempet); font-size: var(--t-lille); }
+.kvalg-gr { padding: 8px 10px 4px; font-size: var(--t-lille); color: var(--daempet); }
