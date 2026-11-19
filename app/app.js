@@ -1,7 +1,7 @@
 // Tallos app til kunden: computer og telefon. Skærmene er de godkendte fra mockuppen (system/design/platform);
 // data kommer fra kunde_data(), og hver handling kalder en funktion i databasen, der selv tjekker adgang og regler.
-import { DEMO, Fejl, LOKALT, logUd, rpc, sb, sendBilag, session, virksomheder } from "../felles/data.js?v=20261119192512";
-import { SUPABASE_URL } from "../felles/config.js?v=20261119192512";
+import { DEMO, Fejl, LOKALT, logUd, rpc, sb, sendBilag, session, virksomheder } from "../felles/data.js?v=20261119193015";
+import { SUPABASE_URL } from "../felles/config.js?v=20261119193015";
 
   let T, V, IDAG, VID, BRUGER, FIRMAER = [];
   const E = F.esc, IC = F.ICON;
@@ -402,8 +402,57 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261119192512";
       <div class="not">${t}</div>${knap ? `<div><button class="knap lille" data-act="${act}">${knap}</button></div>` : ""}</div>`).join("")}${aiKort()}</div>`;
   }
 
+  // Beskeder fra Othman (19. nov 2026): notifikation og mail, når vi svarer. Den ene kan slås fra, aldrig begge.
+  // Den offentlige noegle til web push (VAPID); den hemmelige ligger kun i Supabase og C:\Claude\.env.
+  const VAPID = "BAwt7xOovNoXfbWdK8Nv2Ad0Bo1eBycd5OshFsneAtpMPzw1DO1C2ugF5iOeRzfIIr5mjRUlcff7pUd4WO42EaM";
+  const kanPush = () => "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+  function beskedFane() {
+    const v = S.valg || { mail: true, push: true }, hvem = selv() ? "Tallo" : "Othman";
+    const pushTekst = !kanPush() ? (/iPhone|iPad/.test(navigator.userAgent) ? "Læg appen på hjemmeskærmen for at få notifikationer på iPhone" : "Din browser kan ikke vise notifikationer")
+      : Notification.permission === "denied" ? "Notifikationer er blokeret i browseren. Tillad dem i browserens indstillinger"
+      : S.pushHer ? "Slået til på denne enhed" : "Tryk for at slå til på denne enhed";
+    const sw = (navn, til, under, attr, kan = true) => `<div class="li"><div class="t"><b>${navn}</b><small>${under}</small></div>
+      <button class="sw" role="switch" aria-checked="${til}" aria-label="${navn}" ${attr} ${kan ? "" : "disabled"}></button></div>`;
+    return `<div class="kort" style="max-width:640px"><div class="kort-hoved"><h2>Når ${hvem} svarer</h2></div>
+      <p class="not mt-0">Du får besked, når der er svar på en sag. Selve svaret står kun her i appen. Mindst én skal være slået til.</p>
+      <div class="liste">${sw("Notifikation", v.push && S.pushHer, pushTekst, `data-act="valg-push"`, kanPush() && Notification.permission !== "denied")}
+      ${sw("Mail", v.mail, E(BRUGER.mail || ""), `data-act="valg-mail"`)}</div></div>`;
+  }
+  const b64u = (s) => Uint8Array.from(atob((s + "=".repeat((4 - (s.length % 4)) % 4)).replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0));
+  async function pushStatus() {
+    if (!kanPush()) { S.pushHer = false; return; }
+    const reg = await navigator.serviceWorker.register("sw.js").catch(() => null);
+    S.pushHer = !!(await reg?.pushManager.getSubscription().catch(() => null)) && Notification.permission === "granted";
+  }
+  async function pushTil() {
+    if (await Notification.requestPermission() !== "granted") throw new Fejl("Notifikationer blev ikke tilladt i browseren.");
+    const reg = await navigator.serviceWorker.register("sw.js"); await navigator.serviceWorker.ready;
+    const sub = (await reg.pushManager.getSubscription()) || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64u(VAPID) });
+    const j = sub.toJSON();
+    await rpc("gem_push_abonnement", { p_endpoint: j.endpoint, p_p256dh: j.keys.p256dh, p_auth: j.keys.auth });
+    S.pushHer = true;
+  }
+  async function pushFra() {
+    const reg = await navigator.serviceWorker.getRegistration(), sub = await reg?.pushManager.getSubscription();
+    if (sub) { await rpc("fjern_push_abonnement", { p_endpoint: sub.endpoint }).catch(() => {}); await sub.unsubscribe().catch(() => {}); }
+    S.pushHer = false;
+  }
+  async function valgSkift(hvad) {
+    const v = { ...(S.valg || { mail: true, push: true }) };
+    if (hvad === "push") {
+      const til = !(v.push && S.pushHer);
+      if (!til && !v.mail) return F.toast("Mindst én skal være slået til. Slå mail til først.");
+      if (til) { await pushTil(); v.push = true; } else { await pushFra(); v.push = false; }
+    } else {
+      if (v.mail && !(v.push && S.pushHer)) return F.toast("Mindst én skal være slået til. Slå notifikation til først.");
+      v.mail = !v.mail;
+    }
+    await rpc("saet_besked_valg", { p_mail: v.mail, p_push: v.push });
+    S.valg = v; render();
+    F.toast(hvad === "push" ? (v.push ? "Notifikationer er slået til" : "Notifikationer er slået fra") : (v.mail ? "Mail er slået til" : "Mail er slået fra"));
+  }
   function indstillinger() {
-    const tabs = [["firma", "Firma"], ["fakturaer", "Fakturaer"], ["forbindelser", "Forbindelser"], ...(selv() ? [["konti", "Kategorier"]] : [])];
+    const tabs = [["firma", "Firma"], ["beskeder", "Beskeder"], ["fakturaer", "Fakturaer"], ["forbindelser", "Forbindelser"], ...(selv() ? [["konti", "Kategorier"]] : [])];
     const f = (l, v) => `<div class="felt"><label>${l}</label><div class="vaerdi">${E(v) || "–"}</div></div>`;
     const ind = {
       firma: `<div class="gitter g2"><div class="stak"><div class="kort"><div class="kort-hoved"><h2>Firmaoplysninger</h2></div><div class="gitter g2">${f("Navn", V.navn)}${f("CVR", V.cvr)}${f("Adresse", V.adresse)}${f("Bilagsadresse", V.bilagsadresse)}${f("Moms afregnes", (MOMSPERIODE[V.momsperiode] || "").replace(/^./, (c) => c.toUpperCase()))}${S.mitid?.dansk ? f("Bekræftet med MitID", S.mitid.bekraeftet ? F.datoLang(String(S.mitid.bekraeftet).slice(0, 10)) : "Ikke endnu") : ""}</div>
@@ -418,6 +467,7 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261119192512";
             allerede_tilmeldt: "Tilmeldt Nemhandel gennem et andet program", framelding_bedt: "Vi afmelder dig", frameldt: "Afmeldt" }[S.nh?.status || "ikke_tilmeldt"]}</small></div>${S.nh?.status === "tilmeldt" ? `<button class="knap lille" data-act="nh-frameld">Afmeld</button>`
             : ["accepteret", "afvist", "allerede_tilmeldt", "framelding_bedt"].includes(S.nh?.status) ? "" : `<button class="knap lille" data-act="nh-ja">Tilmeld</button>`}</div></div></div></div>
         <div class="kort tabeldel mt-3"><div class="kort-hoved over-tabel"><h2>Varer og ydelser</h2><button class="knap lille" data-act="ny-vare">${IC.plus} Ny vare</button></div><div class="tabel">${T.varetyper.map((v) => `<div class="r rv"><div class="tekst">${E(v.navn)}</div><div class="b">${F.kr(v.pris)} / ${E(v.enhed)}</div><div class="not">${v.moms === false ? "Uden moms" : "Moms 25 %"}</div></div>`).join("") || '<div class="tom">Ingen varer endnu.</div>'}</div></div>`,
+      beskeder: S.indTab === "beskeder" ? beskedFane() : "",
       forbindelser: S.indTab === "forbindelser" ? integrationer() : "",
       konti: S.indTab === "konti" ? kontiFane() : "",
     };
@@ -729,7 +779,7 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261119192512";
     V = T.virksomhed; IDAG = T.idag;
     if (!V.ejer) V.ejer = BRUGER.navn || "";
     // Kaldene er uafhaengige af hinanden og koeres samtidig (foer: et ad gangen, og siden var hvid imens).
-    const [bank, udkast, udtraek, nh, pk, skiftet, vtm, mitid, def, ef, pen, bk, sup, henv] = await Promise.all([
+    const [bank, udkast, udtraek, nh, pk, skiftet, vtm, mitid, def, ef, pen, bk, sup, valg, henv] = await Promise.all([
       rpc("bankforbindelse_status", { p_virksomhed: VID }).catch(() => []),
       rpc("kunde_udkast", { p_virksomhed: VID }).catch(() => []),
       sb.from("udtraek_bestilling").select("id, type, fra, til, status, sti, bestilt_tid").eq("virksomhed_id", VID)
@@ -744,9 +794,10 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261119192512";
       sb.from("penhed").select("pnummer, navn, adresse_vej, adresse_husnr, adresse_postnr, adresse_by").eq("virksomhed_id", VID).eq("aktiv", true),
       sb.from("bankkonto").select("id, navn, reg_nr, kontonr, iban").eq("virksomhed_id", VID),
       sb.from("supplerende_nummer").select("id, type, nummer").eq("virksomhed_id", VID).order("oprettet"),
+      sb.from("besked_valg").select("mail, push").maybeSingle(),
       sb.from("henvendelse").select("id, emne, status, oprettet, opdateret, henvendelse_svar(id, fra_bogholder, tekst, oprettet)")
         .eq("virksomhed_id", VID).order("opdateret", { ascending: false }).limit(100)]);
-    S.mitid = mitid; S.suppl = sup.data || []; S.henv = henv.data || [];
+    S.mitid = mitid; S.suppl = sup.data || []; S.henv = henv.data || []; S.valg = valg.data || { mail: true, push: true };
     S.dEf = Object.fromEntries((def.data || []).map((d) => [d.id, d])); S.nhOpslag ||= {};
     S.ef = Object.fromEntries((ef.data || []).map((x) => [x.faktura_id, x]));
     S.penheder = pen.data || []; S.bankkonti = (bk.data || []).filter((b) => b.iban || (b.reg_nr && b.kontonr));
@@ -851,6 +902,7 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261119192512";
     }
     if (await mitidTilbage()) return;
     if (S.mitid?.kraeves) return mitidSide();
+    pushStatus().then(() => { if (S.route === "indstillinger") render(); });
     rute();
   }
 
@@ -1222,6 +1274,7 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261119192512";
     if (a === "mitid-nej") { e.preventDefault(); S.mitidKode = null; return logUd(); }
     if (a === "aabn-f") return aabn({ type: "f", nr: +el.dataset.nr });
     if (a === "skriv") return aabn({ type: "besked" });
+    if (a === "valg-push" || a === "valg-mail") return valgSkift(a === "valg-push" ? "push" : "mail");
     if (a === "vaelg-kunde" && S.ed) { S.ed.kunde = id; S.kq = ""; S.kcvr = null; return render(); }
     if (a === "cvr-kunde" && S.ed) return nyKundeFraCvr(S.kcvrVist?.[+el.dataset.i]);
     if (a === "ny-henv") return aabn({ type: "besked", h: "ny" });
@@ -1339,6 +1392,10 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261119192512";
     konto: ["indstillinger", () => { S.indTab = "firma"; }] };
   function rute() {
     if (location.hash.startsWith("#mitid=")) return void mitidTilbage().then((vist) => { if (!vist) rute(); });
+    if (location.hash.startsWith("#henvendelse=")) {
+      const h = decodeURIComponent(location.hash.slice(13)); history.replaceState(null, "", "#overblik");
+      S.route = "overblik"; S.drawer = { type: "besked", h }; render(); return;
+    }
     let r = location.hash.slice(1); if (VIDERE[r]) { VIDERE[r][1]?.(); history.replaceState(null, "", "#" + VIDERE[r][0]); r = VIDERE[r][0]; }
     const skift = VIEWS[r] && r !== S.route && T;
     const tegn = () => { if (VIEWS[r]) { S.route = r; S.drawer = null; S.mere = false; window.scrollTo(0, 0); } render(); };

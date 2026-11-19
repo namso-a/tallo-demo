@@ -1,6 +1,6 @@
 // Bogholderens arbejdsbord paa rigtige data. Én indbakke paa tvaers af kunder, tastaturet foerst. Stille som standard
 // (Othman 22. okt 2026): det, der er i orden, har ingen farve; violet er det, der venter, og roed er fejl. Al logik ligger i databasen; her vises, vaelges og kaldes kun. Login kraever 2-trins (aal2).
-import { DEMO, Fejl, LOKALT, logUd, rpc, sb, session } from "../felles/data.js?v=20261119192512";
+import { DEMO, Fejl, LOKALT, logUd, rpc, sb, session } from "../felles/data.js?v=20261119193015";
 
 const E = F.esc, IC = F.ICON, kr = F.kr;
 const pille = (c, t) => `<span class="pille ${c}">${t}</span>`;
@@ -691,7 +691,11 @@ async function sendSvar(r) {
   if (!tekst) throw new Fejl("Skriv en tekst først.");
   if (S.svar.hvad === "afvis") { await rpc("afvis_bilag", { p_bilag: r.id, p_begrundelse: tekst }); return efter(`Afvist: ${r.tekst}`); }
   if (S.svar.hvad === "indsigelse") { await rpc("efaktura_indsigelse", { p_bilag: r.id, p_grund: tekst }); S.svar = null; return F.toast("Indsigelsen sendes til afsenderen"); }
-  if (r.type === "besked") { await rpc("svar_henvendelse", { p_henvendelse: r.id, p_tekst: tekst }); return efter(`Svar sendt til ${r.virksomhed}`); }
+  if (r.type === "besked") {
+    await rpc("svar_henvendelse", { p_henvendelse: r.id, p_tekst: tekst });
+    sb.functions.invoke("svar-besked").catch(() => {});   // notifikation og mail til kunden; fejler den, sendes den ved naeste svar
+    return efter(`Svar sendt til ${r.virksomhed}`);
+  }
   const bt = r.type === "bank" ? r.id : S.det[r.key]?.bt?.id || r.forslag?.banktransaktion_id || null;
   const bilag = r.type === "bilag" ? r.id : r.forslag?.bilag_id || null;
   await rpc("stil_spoergsmaal", { p_virksomhed: r.virksomhed_id, p_tekst: tekst, p_bilag: bilag, p_banktransaktion: bt, p_haster: !!document.getElementById("f-haster")?.checked });
