@@ -1,7 +1,7 @@
 // Tallos app til kunden: computer og telefon. Skærmene er de godkendte fra mockuppen (system/design/platform);
 // data kommer fra kunde_data(), og hver handling kalder en funktion i databasen, der selv tjekker adgang og regler.
-import { DEMO, Fejl, LOKALT, logUd, rpc, sb, sendBilag, session, virksomheder } from "../felles/data.js?v=20261119195849";
-import { SUPABASE_URL } from "../felles/config.js?v=20261119195849";
+import { DEMO, Fejl, LOKALT, logUd, rpc, sb, sendBilag, session, virksomheder } from "../felles/data.js?v=20261119200509";
+import { SUPABASE_URL } from "../felles/config.js?v=20261119200509";
 
   let T, V, IDAG, VID, BRUGER, FIRMAER = [];
   const E = F.esc, IC = F.ICON;
@@ -258,7 +258,7 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261119195849";
     let g = null;
     const rk = liste.map((t) => {
       const k = KILDE[t.kilde] || KILDE.bank, pt = ST[t.status][1], bogfoert = t.status === "bogfoert", venter = venterT(t);
-      const kat = bogfoert ? E(t.kat) : /ikke bogført|ukendt/i.test(t.kat) ? "" : "Forslag: " + E(t.kat);
+      const kat = bogfoert ? E(t.kat) : /ikke bogført|ukendt/i.test(t.kat) ? "" : "Bogføres som " + E(t.kat);
       const kilde = flereKilder ? `${E(k[2])}${T.konti.length > 1 ? " " + E(T.konti.find((x) => x.id === t.konto)?.navn || "") : ""}` : "";
       const under = [t.status === "spoergsmal" && t.spm ? E(t.spm) : "", kilde].filter(Boolean).join(" · ");
       const ny = flad ? t.dato.slice(0, 7) : gruppe(t), hoved = ny !== g ? `<div class="r gr">${gruppeNavn(ny)}<span class="ant">${antal.get(ny) || ""}</span></div>` : "";
@@ -310,7 +310,7 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261119195849";
         ${T.abonnementer.length ? "" : '<div class="tom">Ingen faste fakturaer endnu.</div>'}</div>`;
     } else {
       ind = `<div class="kort tabeldel mt-3"><div class="tabel"><div class="r rk2 h"><div>Kunde</div><div class="c-kat">By</div><div class="b">Fakturaer</div><div class="b">Faktureret i år</div><div class="b">Ubetalt</div><div></div></div>
-        ${T.kunder.length ? "" : '<div class="tom">Ingen kunder endnu.</div>'}${T.kunder.map((k) => { const fk = T.fakturaer.filter((f) => f.kunde === k.id), fkAar = fk.filter((f) => String(f.dato).startsWith(IDAG.slice(0, 4))); return `<div class="r rk2"><div class="tekst">${E(k.navn)}<small>${k.cvr ? "CVR " + k.cvr : "Privat"}${k.mail ? " · " + E(k.mail) : ""}</small></div><div class="c-kat">${E(k.by)}</div><div class="b tal">${fk.length}</div><div class="b tal">${F.kr0(sum(fkAar, (f) => f.total))}</div><div class="b tal">${F.kr0(sum(fk.filter((f) => f.rest > 0), (f) => f.rest))}</div><div class="b raekke slut"><button class="knap lille" data-act="kontoudtog" data-k="${k.id}">Kontoudtog</button><button class="knap lille" data-act="ny-f" data-k="${k.id}">Faktura</button></div></div>`; }).join("")}</div></div>`;
+        ${T.kunder.length ? "" : '<div class="tom">Ingen kunder endnu.</div>'}${T.kunder.map((k) => { const fk = T.fakturaer.filter((f) => f.kunde === k.id), fkAar = fk.filter((f) => String(f.dato).startsWith(IDAG.slice(0, 4))); return `<div class="r rk2"><div class="tekst">${E(k.navn)}<small>${k.cvr ? "CVR " + k.cvr : "Uden CVR"}${k.mail ? " · " + E(k.mail) : ""}</small></div><div class="c-kat">${E(k.by)}</div><div class="b tal">${fk.length}</div><div class="b tal">${F.kr0(sum(fkAar, (f) => f.total))}</div><div class="b tal">${F.kr0(sum(fk.filter((f) => f.rest > 0), (f) => f.rest))}</div><div class="b raekke slut"><button class="knap lille" data-act="kontoudtog" data-k="${k.id}">Kontoudtog</button><button class="knap lille" data-act="ny-f" data-k="${k.id}">Faktura</button></div></div>`; }).join("")}</div></div>`;
     }
     return `${tabs}${ind}`;
   }
@@ -344,14 +344,14 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261119195849";
   function rapporter() {
     const r = resultat(S.rapP), res = r.si - r.su, ly = r.siLy || r.suLy;
     const rows = (o, oLy) => Object.entries(o).sort((a, b) => b[1] - a[1]).map(([n, v]) => `<tr><td>${E(n)}</td><td>${F.kr0(v)}</td>${ly ? `<td class="svag">${F.kr0(oLy[n] || 0)}</td>` : ""}</tr>`).join("");
-    const hent = [["Resultat som PDF", "", "udskriv"], ["Alle betalinger i Excel", "Vi sender den på mail", "bestil"],
-      [`Standardfilen for ${IDAG.slice(0, 4)}`, "Til din revisor", "udtraek", "saft"], ["Hele bogføringen med bilag", "", "udtraek", "udlevering"]];
+    const hent = [["Resultat som PDF", "", "udskriv"], ["Alle betalinger i Excel", "Vi sender den til din mail", "bestil"],
+      [`Hele regnskabet for ${IDAG.slice(0, 4)} som fil`, "Den fil, Skattestyrelsen og revisorer kan læse (SAF-T)", "udtraek", "saft"], ["Hele bogføringen med bilag", "", "udtraek", "udlevering"]];
     const klar = (S.udtraek || []).length ? `<div class="liste mt-1">${S.udtraek.map((u) => `<div class="li"><div class="t"><b>${u.type === "saft" ? "Standardfilen " + u.fra.slice(0, 4) : "Hele bogføringen"}</b><small>Bestilt ${F.dato(u.bestilt_tid.slice(0, 10))}</small></div>${u.status === "klar" ? `<button class="knap lille p" data-act="hent-udtraek" data-sti="${E(u.sti)}" data-navn="${u.type === "saft" ? `saft-${V.cvr}-${u.fra.slice(0, 4)}.xml` : `bogfoering-${V.cvr}.zip`}">${IC.hent} Hent</button>` : u.status === "fejl" ? pille("roed", "Fejl") : pille("graa", "Laves")}</div>`).join("")}</div>` : "";
     return `<div class="gitter g21"><div class="kort"><div class="kort-hoved"><h2>Resultat</h2><span class="not">Beløb uden moms</span></div>
-        <div class="rul"><table class="vtabel"><thead><tr><th></th><th>${IDAG.slice(0, 4)}</th>${ly ? "<th>Sidste år</th>" : ""}</tr></thead><tbody>
+        <div class="rul"><table class="vtabel"><thead><tr><th></th><th>${E(perioder()[S.rapP][0])}</th>${ly ? "<th>Sidste år</th>" : ""}</tr></thead><tbody>
         <tr class="sum"><td>Indtægter</td><td>${F.kr0(r.si)}</td>${ly ? `<td>${F.kr0(r.siLy)}</td>` : ""}</tr>${rows(r.inn, r.innLy)}
-        <tr class="sum"><td>Udgifter</td><td>${F.kr0(-r.su)}</td>${ly ? `<td>${F.kr0(-r.suLy)}</td>` : ""}</tr>${rows(r.ud, r.udLy)}
-        <tr class="sum"><td>Overskud</td><td>${F.kr0(res)}</td>${ly ? `<td>${F.kr0(r.siLy - r.suLy)}</td>` : ""}</tr></tbody></table></div></div>
+        <tr class="sum"><td>Udgifter</td><td>${F.kr0(r.su)}</td>${ly ? `<td>${F.kr0(r.suLy)}</td>` : ""}</tr>${rows(r.ud, r.udLy)}
+        <tr class="sum"><td>${res >= 0 ? "Overskud" : "Underskud"}</td><td class="${res >= 0 ? "plus" : "minus"}">${F.kr0(Math.abs(res))}</td>${ly ? `<td>${F.kr0(r.siLy - r.suLy)}</td>` : ""}</tr></tbody></table></div></div>
       <div class="stak"><div class="kort"><div class="kort-hoved"><h2>Måned for måned</h2></div>
         ${T.maaneder.some((m) => m.ind || m.ud) ? bars(T.maaneder.map((m) => ({ m: m.maaned, a: m.ind, b: m.ud, delvis: m.maaned === +IDAG.slice(5, 7) })), null, 420, 220) : '<p class="not">Ingen tal endnu.</p>'}
         <div class="forkl"><span><i class="ind"></i>Ind</span><span><i class="ud"></i>Ud</span></div></div>
@@ -364,11 +364,11 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261119195849";
     // Perioder fra før kunden kom til Tallo (ingen betalinger eller fakturaer) vises ikke.
     const start = [...T.transaktioner.map((t) => t.dato), ...T.fakturaer.map((f) => f.dato)].sort()[0] || IDAG;
     const vis = (q) => q.status === "indberettet" || q.til >= start;
-    const stat = (q) => (q.status === "indberettet" ? ["graa", "Indberettet"] : q.status === "igang" ? ["graa", "I gang"] : selv() ? ["accent", "Til dig"] : ["graa", "Gøres klar"]);
+    const stat = (q) => (q.status === "indberettet" ? ["graa", "Indberettet"] : q.status === "igang" ? ["graa", "Kvartalet er ikke slut"] : selv() ? ["accent", "Til dig"] : ["graa", "Othman gør den klar"]);
     const mangler = T.transaktioner.filter((t) => t.status !== "bogfoert" && t.dato >= k.fra && t.dato <= k.til).length;
     // Én linje om, hvor perioden er; fristen staar i listen og beloebet én gang.
     const status = ind ? "Indberettet." : selv() ? "" : mangler
-      ? `<div class="raekke mellem"><span>${mangler} betaling${mangler > 1 ? "er" : ""} mangler en kvittering</span><button class="knap lille p" data-act="filter-gaa" data-f="mangler_kvittering">Se dem</button></div>`
+      ? `<div class="raekke mellem"><span>${mangler} betaling${mangler > 1 ? "er" : ""} mangler en kvittering</span><button class="knap lille" data-act="filter-gaa" data-f="mangler_kvittering">Se dem</button></div>`
       : "Vi indberetter den.";
     return `<div class="gitter g12 moms-g"><div class="kort"><div class="kort-hoved"><h2>Perioder</h2><span class="not">${(MOMSPERIODE[V.momsperiode] || "").replace(/^./, (c) => c.toUpperCase())}</span></div><div class="liste perioder">${K.map((q, i) => !vis(q) ? "" : `<div class="li ${i === S.momsK ? "valgt" : ""}" role="button" tabindex="0" data-act="momsk" data-i="${i}"><div class="t"><b>${q.navn}</b><small>Frist ${F.datoLang(q.frist)}</small></div><div class="hojre"><div class="tal">${F.kr0(q.at_betale)} kr.</div>${pille(...stat(q))}</div></div>`).join("")}</div></div>
       <div class="stak"><div class="kort"><div class="kort-hoved"><h2>${k.navn}</h2></div>
@@ -551,13 +551,13 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261119195849";
   function skuffeT(t) {
     const [pc, pt] = ST[t.status], k = KILDE[t.kilde] || KILDE.bank, moms = t.moms === "25" ? Math.abs(t.beloeb) * 0.2 : 0, bogfoert = t.status === "bogfoert";
     // Det, kunden skal goere, staar én gang, med én primaer knap; ellers er skuffen stille.
-    const handl = t.status === "spoergsmal" ? `<div class="kort tonet mt-3"><b>${E(t.spm)}</b><div class="raekke mt-2"><button class="knap" data-act="svar" data-id="${t.id}" data-s="Til firmaet">Til firmaet</button><button class="knap" data-act="svar" data-id="${t.id}" data-s="Privat">Privat</button><button class="knap p" data-act="scan">Send kvittering</button></div></div>`
+    const handl = t.status === "spoergsmal" ? `<div class="kort tonet mt-3"><b>${E(t.spm)}</b><div class="raekke mt-2"><button class="knap" data-act="svar" data-id="${t.id}" data-s="Til firmaet">Til firmaet</button><button class="knap" data-act="svar" data-id="${t.id}" data-s="Privat">Privat</button></div><p class="lille-tekst mt-2">Er det noget andet, så skriv det nedenfor.</p></div>`
       : t.status === "mangler_kvittering" ? `<div class="kort tonet mt-3"><b>Mangler kvittering</b><div class="raekke mt-2"><button class="knap p" data-act="scan">Send kvittering</button><button class="knap" data-act="ingen" data-id="${t.id}">Har ikke nogen</button></div></div>` : "";
     return `<div class="sh"><h2>${E(t.tekst)}</h2><button class="ikonknap" data-act="luk" aria-label="Luk">${IC.luk}</button></div><div class="sk">
       <div class="not">${F.datoLang(t.dato)} · ${k[2]}</div><div class="raekke mellem"><div class="stort-beloeb tal">${t.beloeb > 0 ? "+" : ""}${F.kr(t.beloeb)} kr.</div>${handl ? "" : pille(pc, pt)}</div>${handl}
-      <div class="liste mt-3"><div class="li"><div class="t not">${bogfoert ? "Kategori" : "Forslag"}</div><span>${E(t.kat)}</span></div><div class="li"><div class="t not">Konto</div><span>${E(T.konti.find((x) => x.id === t.konto).navn)}</span></div>${bogfoert ? `<div class="li"><div class="t not">Moms</div><span class="tal">${moms ? F.kr(moms) + " kr." : "Ingen"}</span></div><div class="li"><div class="t not">Bogført af</div><span>${t.af === "ai_godkendt" ? "AI efter faste regler" : t.af === "regel" ? "En fast regel" : selv() ? "Dig" : "Tallo"}</span></div>` : ""}${t.bilag ? `<div class="li"><div class="t not">Bilag</div><span class="raekke">Nr. ${t.bilag}<button class="knap lille" data-act="se-bilag" data-nr="${t.bilag}">Se</button>${bogfoert && selv() ? `<button class="knap lille" data-act="ret-fejl" data-nr="${t.bilag}">Ret fejl</button>` : ""}</span></div>` : ""}${t.hvorfor && bogfoert ? `<div class="li"><div class="t"><span class="not">Hvorfor</span><small>${E(t.hvorfor)}</small></div></div>` : ""}</div>
-      <div class="felt mt-3"><label for="besked">${t.status === "spoergsmal" ? "Dit svar" : "Skriv til os om den"}</label><textarea class="inp" id="besked"></textarea></div></div>
-      <div class="sf"><span></span><button class="knap ${handl ? "" : "p"}" data-act="send-besked">Send</button></div>`;
+      <div class="liste mt-3">${bogfoert || !/ikke bogført|ukendt/i.test(t.kat) ? `<div class="li"><div class="t not">${bogfoert ? "Bogført som" : "Vi bogfører den som"}</div><span>${E(t.kat)}</span></div>` : ""}<div class="li"><div class="t not">Betalt fra</div><span>${E(T.konti.find((x) => x.id === t.konto)?.navn || "Firmaets konto")}</span></div>${bogfoert ? `<div class="li"><div class="t not">Moms</div><span class="tal">${moms ? F.kr(moms) + " kr." : "Ingen"}</span></div><div class="li"><div class="t not">Bogført af</div><span>${t.af === "ai_godkendt" ? "AI efter faste regler" : t.af === "regel" ? "En fast regel" : selv() ? "Dig" : "Tallo"}</span></div>` : ""}${t.bilag ? `<div class="li"><div class="t not">Bilag</div><span class="raekke">Nr. ${t.bilag}<button class="knap lille" data-act="se-bilag" data-nr="${t.bilag}">Se</button>${bogfoert && selv() ? `<button class="knap lille" data-act="ret-fejl" data-nr="${t.bilag}">Ret fejl</button>` : ""}</span></div>` : ""}${t.hvorfor && bogfoert ? `<div class="li"><div class="t"><span class="not">Hvorfor</span><small>${E(t.hvorfor)}</small></div></div>` : ""}</div>
+      <div class="felt mt-3"><label for="besked">${t.status === "spoergsmal" ? "Dit svar med dine egne ord" : `Spørgsmål om betalingen til ${selv() ? "Tallo" : "Othman"}`}</label><textarea class="inp" id="besked"></textarea></div></div>
+      <div class="sf"><span></span><button class="knap" data-act="send-besked">${t.status === "spoergsmal" ? "Send svar" : "Send spørgsmål"}</button></div>`;
   }
   // E-fakturaens vej og modtagerens svar (BEK 97 bilag 2 pkt. 1 f). [tekst, klasse]: ok = som forventet, nu = se på det.
   const EF_TRIN = { sendt: ["Sendt som e-faktura", "ok"], leveret: ["Leveret til kundens system", "ok"], afvist: ["Kunne ikke leveres", "fejl"],
@@ -583,7 +583,7 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261119195849";
         ${f.forfald < IDAG ? `<button class="knap ${kan ? "p" : ""}" data-act="rykker" ${kan ? "" : "disabled aria-disabled=\"true\""}>${gebyr ? `Send rykker (gebyr 100 kr.)` : "Send påmindelse"}</button>` : ""}</div>`;
     }
     return `<div class="sh"><h2>Faktura ${f.nr}</h2><button class="ikonknap" data-act="luk" aria-label="Luk">${IC.luk}</button></div><div class="sk graa">${efForloeb(f)}${forloeb}${fakturaDok(f)}</div>
-      <div class="sf"><div>${f.betalt ? pille(pc, pt) : ""}</div><div class="raekke"><button class="knap" data-act="udskriv">${IC.hent} Udskriv</button>${f.status === "krediteret" || f.status === "kreditnota" ? "" : `<button class="knap" data-act="krediter" data-nr="${f.nr}">Krediter</button>`}</div></div>`;
+      <div class="sf"><div>${f.betalt ? pille(pc, pt) : ""}</div><div class="raekke"><button class="knap" data-act="udskriv">${IC.hent} Udskriv</button>${f.status === "krediteret" || f.status === "kreditnota" ? "" : `<button class="knap" data-act="krediter" data-nr="${f.nr}" title="Laver en kreditnota, så fakturaen ikke gælder">Annullér faktura</button>`}</div></div>`;
   }
 
   function skuffeTb(t) {
@@ -769,7 +769,7 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261119195849";
     if (S.tilListe && S.route === "overblik") { S.tilListe = false; requestAnimationFrame(() => document.getElementById("betalinger")?.scrollIntoView({ behavior: STILLE() ? "auto" : "smooth", block: "start" })); }
   }
   // Skriv til Othman (19. nov 2026): henvendelser, der står hver for sig, med en tråd og en status.
-  const HST = { aaben: ["stille", "Venter på svar"], besvaret: ["handling", "Svar til dig"], lukket: ["stille", "Lukket"] };
+  const HST = { aaben: ["stille", "Othman svarer snart"], besvaret: ["handling", "Nyt svar til dig"], lukket: ["stille", "Lukket"] };
   const kl = (ts) => `${F.dato(ts.slice(0, 10))} kl. ${new Date(ts).toLocaleTimeString("da-DK", { hour: "2-digit", minute: "2-digit" })}`;
   function skuffeBesked() {
     const hvem = selv() ? "Tallo" : "Othman", d = S.drawer, liste = S.henv || [];
@@ -800,8 +800,8 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261119195849";
   function scanHtml() {
     const filer = S.upload || [];
     return `<div class="slor" data-act="luk"></div><aside class="skuffe" role="dialog" aria-modal="true" aria-label="Send bilag"><div class="sh"><h2>Send bilag</h2><button class="ikonknap" data-act="luk" aria-label="Luk">${IC.luk}</button></div><div class="sk">
-      <div class="dropzone"><div class="dz-knapper"><label class="knap p">${IC.scan} Tag billede<input type="file" id="kamera" accept="image/*" capture="environment" class="sr"></label>
-        <label class="knap">Vælg filer<input type="file" id="filer" accept="image/*,application/pdf" multiple class="sr"></label></div><p class="lille-tekst">Kvitteringer og fakturaer, som billede eller PDF</p></div>
+      <div class="dropzone"><div class="dz-knapper"><label class="knap ${matchMedia("(pointer: coarse)").matches ? "p" : ""}">${IC.scan} Tag billede<input type="file" id="kamera" accept="image/*" capture="environment" class="sr"></label>
+        <label class="knap ${matchMedia("(pointer: coarse)").matches ? "" : "p"}">Vælg filer<input type="file" id="filer" accept="image/*,application/pdf" multiple class="sr"></label></div><p class="lille-tekst">Kvitteringer og fakturaer, som billede eller PDF</p></div>
       <div class="raekke mt-3"><div class="fyld"><b>Betalt med egne penge</b><div class="lille-tekst">Firmaet skylder dig så beløbet</div></div><button class="sw" role="switch" aria-checked="${!!S.egne}" aria-label="Betalt med egne penge" data-act="egne"></button></div>
       ${filer.length ? `<div class="bonner">${filer.map((u) => `<div class="bonkort ${u.fejl ? "fejl" : ""} ${u.vist ? "" : "ny"}"><span class="mini-bon"><i></i><i></i><i></i><i></i></span>
         <div class="t"><b>${E(u.lev || u.navn)}</b>${u.beloeb != null ? `<span class="tal"> · ${F.kr(u.beloeb)} kr.</span>` : ""}

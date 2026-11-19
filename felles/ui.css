@@ -126,7 +126,7 @@ textarea.inp { min-height: 76px; resize: vertical; }
 .vtabel tr.sum td { font-weight: 600; background: var(--bg); } .vtabel tr.sum td:first-child { background: var(--bg); }
 .kort .vtabel th:first-child, .kort .vtabel td:first-child { background: var(--bg); }
 .vtabel .pos { color: var(--tekst); } .vtabel .neg { color: var(--roed); }
-.rul { overflow-x: auto; }
+.rul { overflow-x: auto; overflow-y: hidden; }
 
 /* ------------------------------------------------------------------ skuffe ---- */
 .slor { position: fixed; inset: 0; background: rgba(20,18,30,.32); z-index: 40; animation: ind var(--hurtig) ease-out; }

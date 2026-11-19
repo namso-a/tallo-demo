@@ -334,3 +334,5 @@ fieldset.rent { border: 0; padding: 0; margin-left: 0; margin-right: 0; }
 
 .ov-tal-kort { position: relative; } .ov-tal-kort .pil { position: absolute; right: 18px; top: 50%; transform: translateY(-50%); font-size: 24px; color: var(--daempet); }
 .ov-tal-kort.stille { cursor: default; } @media (hover: hover) { .ov-tal-kort.stille:hover { background: var(--bg); } }
+
+.vtabel td.plus { color: var(--groen); font-weight: 600; } .vtabel td.minus { color: var(--roed); font-weight: 600; }
