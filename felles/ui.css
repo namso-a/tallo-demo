@@ -254,3 +254,6 @@ textarea.inp.hoej { min-height: 140px; }
 .app.smal .side nav a .tael { position: absolute; top: 2px; right: 4px; margin: 0; font-size: 11px; padding: 0 5px; }
 .app.smal .bogholder-raekke, .app.smal .bruger-kort { justify-content: center; padding: 8px 0; }
 .app.smal .bruger-kort { background: none; box-shadow: none; }
+/* Toast med en handling (fx Fortryd) */
+.toast { display: flex; align-items: center; gap: 14px; width: max-content; }
+.toast-knap { border: 0; background: none; color: inherit; font: inherit; font-weight: 600; padding: 6px 4px; margin: -6px -6px -6px 0; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }

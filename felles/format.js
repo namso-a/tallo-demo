@@ -62,12 +62,21 @@
       },
     },
     esc: (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])),
-    toast(tekst) {
+    /** En kort besked nederst. Med handling ({tekst, fn}) får den en knap, fx "Fortryd", og står lidt længere. */
+    toast(tekst, handling) {
       document.querySelectorAll(".toast").forEach((t) => t.remove());
       const t = document.createElement("div");
-      t.className = "toast"; t.setAttribute("role", "status"); t.textContent = tekst;
+      t.className = "toast"; t.setAttribute("role", "status");
+      const s = document.createElement("span"); s.textContent = tekst; t.appendChild(s);
+      const vaek = () => { t.classList.add("ud"); setTimeout(() => t.remove(), 180); };
+      if (handling) {
+        const b = document.createElement("button");
+        b.type = "button"; b.className = "toast-knap"; b.textContent = handling.tekst;
+        b.addEventListener("click", () => { clearTimeout(tid); vaek(); handling.fn(); });
+        t.appendChild(b);
+      }
       document.body.appendChild(t);
-      setTimeout(() => { t.classList.add("ud"); setTimeout(() => t.remove(), 180); }, 2800);
+      const tid = setTimeout(vaek, handling ? 5000 : 2800);
     },
     /** Et tegnet kassebon-/fakturabilag ud fra en transaktion. */
     bon(t, v) {

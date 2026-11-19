@@ -1,9 +1,9 @@
 // Forbindelsen til Tallos database. Al logik ligger i databasen (RLS og funktioner); appen kalder kun.
-import { createClient } from "../vendor/supabase-2.117.2.js?v=20261112195147";
-import { DEMO, LOKALT, SUPABASE_ANON, SUPABASE_URL } from "./config.js?v=20261112195147";
+import { createClient } from "../vendor/supabase-2.117.2.js?v=20261119191042";
+import { DEMO, LOKALT, SUPABASE_ANON, SUPABASE_URL } from "./config.js?v=20261119191042";
 
-// Kundens app og arbejdsbordet ligger paa samme adresse; hver sit login, saa de ikke overskriver hinanden.
-const APP = location.pathname.includes("/bord") ? "bord" : "app";
+// Kundens app, arbejdsbordet og intern ligger paa samme adresse lokalt; hver sit login, saa de ikke overskriver hinanden.
+const APP = location.pathname.includes("/bord") ? "bord" : location.pathname.includes("/intern") ? "intern" : "app";
 export const sb = createClient(SUPABASE_URL, SUPABASE_ANON, { auth: { persistSession: true, detectSessionInUrl: true, storageKey: `tallo-${APP}` } });
 export { DEMO, LOKALT };
 
@@ -42,8 +42,10 @@ export async function session() {
   return data.session;
 }
 
+/** Log ud på denne enhed. Supabase logger som standard ud på alle enheder (scope global), så telefonen røg ud, når man
+ *  loggede ud på computeren (Othman 15. nov 2026). "Log ud alle steder" i kundens app kalder selv scope global. */
 export async function logUd() {
-  await sb.auth.signOut();
+  await sb.auth.signOut({ scope: "local" });
   location.reload();
 }
 

@@ -1,6 +1,6 @@
 // Bogholderens arbejdsbord paa rigtige data. Én indbakke paa tvaers af kunder, tastaturet foerst. Stille som standard
 // (Othman 22. okt 2026): det, der er i orden, har ingen farve; violet er det, der venter, og roed er fejl. Al logik ligger i databasen; her vises, vaelges og kaldes kun. Login kraever 2-trins (aal2).
-import { DEMO, Fejl, LOKALT, logUd, rpc, sb, session } from "../felles/data.js?v=20261112195147";
+import { DEMO, Fejl, LOKALT, logUd, rpc, sb, session } from "../felles/data.js?v=20261119191042";
 
 const E = F.esc, IC = F.ICON, kr = F.kr;
 const pille = (c, t) => `<span class="pille ${c}">${t}</span>`;
@@ -108,6 +108,8 @@ async function hentDetalje(r, d) {
     const id = r.type === "bank" ? r.id : btId;
     if (id) d.beskeder = (await sb.from("besked").select("tekst, oprettet").eq("banktransaktion_id", id).order("oprettet")).data || [];
   }
+  // Henvendelse (19. nov 2026): hele traaden, saa du kan se, hvad der allerede er sagt.
+  if (r.type === "besked") d.traad = (await sb.from("henvendelse_svar").select("fra_bogholder, tekst, oprettet").eq("henvendelse_id", r.id).order("oprettet")).data || [];
 }
 
 // ------------------------------------------------------------- indbakken ----
@@ -146,10 +148,10 @@ const valgtKonto = (id = "f-konto") => (vaerdi(id).match(/^\d{3,6}/) || [null])[
 function svarFelt(r) {
   if (!S.svar || S.svar.key !== r.key) return "";
   const tilAfs = erEf(r) ? " Det sendes til afsenderen af e-fakturaen." : "";
-  const tekst = S.svar.hvad === "spoerg" ? "Spørgsmål til kunden" : S.svar.hvad === "afvis" ? "Hvorfor afvises det?" + tilAfs
+  const hv = r.type === "besked", tekst = hv ? "Svar til kunden" : S.svar.hvad === "spoerg" ? "Spørgsmål til kunden" : S.svar.hvad === "afvis" ? "Hvorfor afvises det?" + tilAfs
     : S.svar.hvad === "indsigelse" ? "Hvad skal afsenderen rette eller svare på?" + tilAfs : "Svar til kunden";
   return `<div class="svarfelt"><label class="lille-tekst" for="f-svar">${tekst}</label><textarea class="inp" id="f-svar" maxlength="2000"></textarea>
-    ${S.svar.hvad === "spoerg" ? `<label class="flueboks lille-tekst mt-1"><input type="checkbox" id="f-haster"> Haster (ellers mandag kl. 7)</label>` : ""}
+    ${S.svar.hvad === "spoerg" && !hv ? `<label class="flueboks lille-tekst mt-1"><input type="checkbox" id="f-haster"> Haster (ellers mandag kl. 7)</label>` : ""}
     <div class="handl"><button class="knap p" data-act="svar-send">${S.svar.hvad === "afvis" ? "Afvis bilaget" : S.svar.hvad === "indsigelse" ? "Send indsigelse" : "Send"}</button><button class="knap" data-act="svar-luk">Fortryd</button></div></div>`;
 }
 
@@ -198,11 +200,11 @@ function spmPanel(r) {
   const f = r.forslag || {}, v = r.virksomhed_id, d = S.det[r.key] || {};
   const besked = r.type === "besked", bogfoert = d.match?.postering?.nummer;
   const bt = bogfoert ? null : d.bt;
-  const hoved = besked ? `<div><h3>Besked fra kunden</h3><div class="sub">${E(r.virksomhed)} · ${dk(r.modtaget || r.dato)}</div></div><div class="forslag"><div class="k"><span>"${E(r.tekst)}"</span></div>${f.betaling ? `<div class="hvorfor">Om betalingen ${E(f.betaling)} ${f.betalingsdato ? F.datoKort(f.betalingsdato) : ""} ${r.beloeb != null ? kr(r.beloeb) : ""}</div>` : ""}</div>`
+  const hoved = besked ? `<div><h3>${E(f.emne || "Henvendelse fra kunden")}</h3><div class="sub">${E(r.virksomhed)} · ${dk(r.modtaget || r.dato)}</div></div><div class="forslag"><div class="k"><span>"${E(r.tekst)}"</span></div>${f.betaling ? `<div class="hvorfor">Om betalingen ${E(f.betaling)} ${f.betalingsdato ? F.datoKort(f.betalingsdato) : ""} ${r.beloeb != null ? kr(r.beloeb) : ""}</div>` : ""}</div>`
     : `<div><h3>Svar fra kunden</h3><div class="sub">${E(r.virksomhed)} · ${dk(r.modtaget || r.dato)}</div></div><div class="forslag"><div class="k"><span>"${E(f.svar || (f.svar_bilag_id ? "Bilag vedhæftet" : "Ubesvaret"))}"</span></div><div class="hvorfor">Du spurgte: ${E(f.spoergsmaal)}</div></div>`;
   const bogfoer = bt ? `<div><div class="lille-tekst">Banklinje ${dk(bt.dato)} ${E(bt.tekst)} ${kr(bt.beloeb)}</div><div class="felt3"><label>Konto</label>${kontoFelt(v, null)}</div><div class="felt3"><label>Moms</label>${momsFelt(bt.beloeb > 0 ? "salg_25" : "koeb_25")}</div></div>` : "";
   const knapper = besked
-    ? `${bt ? `<button class="knap p" data-act="godkend">Bogfør uden bilag</button>` : `<button class="knap p" data-act="godkend">Markér som læst</button>`}<button class="knap" data-act="spoerg">Svar kunden</button>${bt ? `<button class="knap" data-act="laest">Markér som læst</button>` : ""}`
+    ? `<button class="knap p" data-act="spoerg">Svar kunden</button>${bt ? `<button class="knap" data-act="godkend">Bogfør uden bilag og luk</button>` : ""}<button class="knap" data-act="laest">Luk sagen</button>`
     : `${bt && !f.svar_bilag_id ? `<button class="knap p" data-act="godkend">Brug svaret og bogfør</button>` : `<button class="knap p" data-act="godkend">Luk spørgsmålet</button>`}<button class="knap" data-act="spoerg">Spørg igen</button>${bt ? `<button class="knap" data-act="luk-spm">Luk uden at bogføre</button>` : ""}`;
   const allerede = bogfoert ? `<div class="not">Bogført som postering ${bogfoert}.</div>` : "";
   return `<div class="hoejre-panel">${hoved}${allerede}${f.svar_bilag_id ? `<div class="lille-tekst">Kunden har sendt et bilag; det kommer under Bilag.</div>` : ""}${bogfoer}
@@ -249,7 +251,7 @@ function midt(r) {
     return `<div class="midt-fladen"><div class="kort midt-kort"><h2>${E(r.tekst)}</h2><div class="stort tal">${kr(a.MomsAngivelseAfgiftTilsvarBeloeb || 0)} <small>momstilsvar</small></div><div class="not">Salgsmoms ${kr(a.MomsAngivelseSalgsMomsBeloeb || 0)} · købsmoms ${kr(a.MomsAngivelseKoebsMomsBeloeb || 0)}</div></div></div>`;
   }
   const f = r.forslag || {};
-  const linjer = r.type === "besked" ? [["K", `Kunden skrev: ${r.tekst}`, dk(r.modtaget)]] : [["OA", `Du spurgte: ${f.spoergsmaal}`, dk(r.dato)], ["K", `Kunden svarede: ${f.svar || "(bilag)"}`, dk(r.modtaget)]];
+  const linjer = r.type === "besked" ? (S.det[r.key]?.traad || []).map((x) => [x.fra_bogholder ? "OA" : "K", x.tekst, dk(x.oprettet)]) : [["OA", `Du spurgte: ${f.spoergsmaal}`, dk(r.dato)], ["K", `Kunden svarede: ${f.svar || "(bilag)"}`, dk(r.modtaget)]];
   return `<div class="midt-fladen"><div class="kort midt-kort"><h2>Samtalen</h2><div class="liste">${linjer.map(([a, t, d2]) => `<div class="li"><span class="monogram">${a}</span><div class="t"><b>${E(t)}</b><small>${d2}</small></div></div>`).join("")}</div></div></div>`;
 }
 
@@ -680,8 +682,8 @@ async function godkend(r) {
       if (!konto) throw new Fejl("Vælg en konto (skriv nummer eller navn).");
       await rpc("bogfoer_banklinje", { p_banktransaktion: bt.id, p_konto: konto, p_momskode: mk, p_tekst: `${bt.tekst}. Kunden: ${r.tekst}`.slice(0, 200) });
     }
-    await rpc("marker_besked_laest", { p_besked: r.id });
-    return efter(bt ? `Bogført på ${konto}` : "Markeret som læst");
+    await rpc("luk_henvendelse", { p_henvendelse: r.id });
+    return efter(bt ? `Bogført på ${konto}, og sagen er lukket` : "Sagen er lukket");
   }
 }
 async function sendSvar(r) {
@@ -689,11 +691,11 @@ async function sendSvar(r) {
   if (!tekst) throw new Fejl("Skriv en tekst først.");
   if (S.svar.hvad === "afvis") { await rpc("afvis_bilag", { p_bilag: r.id, p_begrundelse: tekst }); return efter(`Afvist: ${r.tekst}`); }
   if (S.svar.hvad === "indsigelse") { await rpc("efaktura_indsigelse", { p_bilag: r.id, p_grund: tekst }); S.svar = null; return F.toast("Indsigelsen sendes til afsenderen"); }
+  if (r.type === "besked") { await rpc("svar_henvendelse", { p_henvendelse: r.id, p_tekst: tekst }); return efter(`Svar sendt til ${r.virksomhed}`); }
   const bt = r.type === "bank" ? r.id : S.det[r.key]?.bt?.id || r.forslag?.banktransaktion_id || null;
   const bilag = r.type === "bilag" ? r.id : r.forslag?.bilag_id || null;
   await rpc("stil_spoergsmaal", { p_virksomhed: r.virksomhed_id, p_tekst: tekst, p_bilag: bilag, p_banktransaktion: bt, p_haster: !!document.getElementById("f-haster")?.checked });
   if (r.type === "spoergsmaal") await rpc("luk_spoergsmaal", { p_spoergsmaal: r.id });
-  if (r.type === "besked") await rpc("marker_besked_laest", { p_besked: r.id });
   return efter(`Spørgsmål sendt til ${r.virksomhed}`);
 }
 function download(navn, tekst, type = "text/csv") {
@@ -715,7 +717,7 @@ async function handling(a, el, e) {
   if (a === "spoerg" || a === "afvis" || a === "indsigelse") { if (a !== "spoerg" && r?.type !== "bilag") return; S.svar = { key: r.key, hvad: a }; render(); return document.getElementById("f-svar")?.focus(); }
   if (a === "svar-luk") { S.svar = null; return render(); }
   if (a === "svar-send") return travlt(() => sendSvar(r));
-  if (a === "laest") return travlt(async () => { await rpc("marker_besked_laest", { p_besked: r.id }); await efter("Markeret som læst"); });
+  if (a === "laest") return travlt(async () => { await rpc("luk_henvendelse", { p_henvendelse: r.id }); await efter("Sagen er lukket"); });
   if (a === "luk-spm") return travlt(async () => { await rpc("luk_spoergsmaal", { p_spoergsmaal: r.id }); await efter("Spørgsmålet er lukket"); });
   if (a === "match") {
     const b = S.rows.find((x) => x.key === el.dataset.bilag);
