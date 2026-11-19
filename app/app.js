@@ -1,7 +1,7 @@
 // Tallos app til kunden: computer og telefon. Skærmene er de godkendte fra mockuppen (system/design/platform);
 // data kommer fra kunde_data(), og hver handling kalder en funktion i databasen, der selv tjekker adgang og regler.
-import { DEMO, Fejl, LOKALT, logUd, rpc, sb, sendBilag, session, virksomheder } from "../felles/data.js?v=20261119200509";
-import { SUPABASE_URL } from "../felles/config.js?v=20261119200509";
+import { DEMO, Fejl, LOKALT, logUd, rpc, sb, sendBilag, session, virksomheder } from "../felles/data.js?v=20261119200902";
+import { SUPABASE_URL } from "../felles/config.js?v=20261119200902";
 
   let T, V, IDAG, VID, BRUGER, FIRMAER = [];
   const E = F.esc, IC = F.ICON;
@@ -300,10 +300,10 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261119200509";
       ind = `${udkastKort()}
         <div class="kort tabeldel mt-3"><div class="tabel-top"><div class="filtre" role="group" aria-label="Vis">${[["alle", "Alle"], ["ubetalte", "Ubetalte", ub.length], ["forsent", "For sent", forsent.length], ["betalt", "Betalt"]].map(([k, t, c]) => `<button data-act="ffilter" data-f="${k}" aria-pressed="${ff === k}">${t}${c ? `<b>${c}</b>` : ""}</button>`).join("")}</div></div>
         <div class="tabel"><div class="r rf h"><div>Nr.</div><div>Kunde</div><div class="c-dato">Dato</div><div class="c-dato">Forfald</div><div>Status</div><div class="b">Kr.</div></div>
-        ${vis.length ? "" : `<div class="tom">${fl.length ? "Ingen her." : "Ingen fakturaer endnu."}</div>`}${vis.map((f) => `<div class="r rf" role="button" tabindex="0" data-act="aabn-f" data-nr="${f.nr}"><div class="tal">${f.nr}</div><div class="tekst">${E(kunde(f.kunde).navn)}<small>${E(f.linjer[0].tekst)}${f.linjer.length > 1 ? " m.m." : ""}</small></div><div class="c-dato tal">${F.dato(f.dato)}</div><div class="c-dato tal">${F.dato(f.forfald)}</div><div>${pille(...fstat(f))}</div><div class="b tal">${F.kr(f.total)}</div></div>`).join("")}</div></div>`;
+        ${vis.length ? "" : `<div class="tom">${fl.length ? "Ingen her." : "Ingen fakturaer endnu."}</div>`}${vis.map((f) => `<div class="r rf" role="button" tabindex="0" data-act="aabn-f" data-nr="${f.nr}"><div class="tal">${f.nr}</div><div class="tekst">${E(kunde(f.kunde).navn)}<small>${E(f.linjer[0].tekst)}${f.linjer.length > 1 ? " m.m." : ""}</small></div><div class="c-dato tal">${F.dato(f.dato)}</div><div class="c-dato tal"><span class="kun-mobil">Forfald </span>${F.dato(f.forfald)}</div><div>${pille(...fstat(f))}</div><div class="b tal">${F.kr(f.total)}</div></div>`).join("")}</div></div>`;
     } else if (S.salgTab === "tilbud") {
       ind = `<div class="kort tabeldel mt-3"><div class="tabel"><div class="r rf h"><div>Nr.</div><div>Kunde</div><div class="c-dato">Dato</div><div class="c-dato">Gælder til</div><div>Status</div><div class="b">Kr.</div></div>
-        ${T.tilbud.length ? "" : '<div class="tom">Ingen tilbud endnu.</div>'}${[...T.tilbud].sort((a, b) => (a.dato < b.dato ? 1 : -1)).map((t) => `<div class="r rf" role="button" tabindex="0" data-act="aabn-tb" data-nr="${t.nr}"><div class="tal">${t.nr}</div><div class="tekst">${E(kunde(t.kunde).navn)}<small>${E(t.linjer[0].tekst)}${t.linjer.length > 1 ? " m.m." : ""}</small></div><div class="c-dato tal">${F.dato(t.dato)}</div><div class="c-dato tal">${F.dato(t.gyldig)}</div><div>${pille(...TBST[t.status])}</div><div class="b tal">${F.kr(t.total)}</div></div>`).join("")}</div></div>`;
+        ${T.tilbud.length ? "" : '<div class="tom">Ingen tilbud endnu.</div>'}${[...T.tilbud].sort((a, b) => (a.dato < b.dato ? 1 : a.dato > b.dato ? -1 : String(b.nr).localeCompare(String(a.nr), "da", { numeric: true }))).map((t) => `<div class="r rf" role="button" tabindex="0" data-act="aabn-tb" data-nr="${t.nr}"><div class="tal">${t.nr}</div><div class="tekst">${E(kunde(t.kunde).navn)}<small>${E(t.linjer[0].tekst)}${t.linjer.length > 1 ? " m.m." : ""}</small></div><div class="c-dato tal">${F.dato(t.dato)}</div><div class="c-dato tal">${F.dato(t.gyldig)}</div><div>${pille(...TBST[t.status])}</div><div class="b tal">${F.kr(t.total)}</div></div>`).join("")}</div></div>`;
     } else if (S.salgTab === "abonnementer") {
       ind = `<div class="kort tabeldel mt-3"><div class="tabel"><div class="r ra h"><div>Kunde</div><div>Hvad</div><div>Hvor ofte</div><div class="c-dato">Næste</div><div class="b">Kr. pr. gang</div><div></div></div>
         ${T.abonnementer.map((a) => `<div class="r ra"><div class="tekst">${E(kunde(a.kunde).navn)}<small>${a.sendt} sendt</small></div><div class="tekst">${E(a.linjer[0].tekst)}</div><div>${E(a.hvor_ofte)}</div><div class="c-dato tal">${a.status === "stoppet" ? "Stoppet" : F.dato(a.naeste)}</div><div class="b tal">${F.kr(a.total)}</div><div class="b">${a.status === "stoppet" ? "" : `<button class="knap lille" data-act="stop-abon" data-id="${a.id}">Stop</button>`}</div></div>`).join("")}</div>
@@ -353,8 +353,8 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261119200509";
         <tr class="sum"><td>Udgifter</td><td>${F.kr0(r.su)}</td>${ly ? `<td>${F.kr0(r.suLy)}</td>` : ""}</tr>${rows(r.ud, r.udLy)}
         <tr class="sum"><td>${res >= 0 ? "Overskud" : "Underskud"}</td><td class="${res >= 0 ? "plus" : "minus"}">${F.kr0(Math.abs(res))}</td>${ly ? `<td>${F.kr0(r.siLy - r.suLy)}</td>` : ""}</tr></tbody></table></div></div>
       <div class="stak"><div class="kort"><div class="kort-hoved"><h2>Måned for måned</h2></div>
-        ${T.maaneder.some((m) => m.ind || m.ud) ? bars(T.maaneder.map((m) => ({ m: m.maaned, a: m.ind, b: m.ud, delvis: m.maaned === +IDAG.slice(5, 7) })), null, 420, 220) : '<p class="not">Ingen tal endnu.</p>'}
-        <div class="forkl"><span><i class="ind"></i>Ind</span><span><i class="ud"></i>Ud</span></div></div>
+        ${T.maaneder.some((m) => m.ind || m.ud) ? bars(T.maaneder.map((m) => ({ m: m.maaned, a: m.ind, b: m.ud, delvis: m.maaned < perioder()[S.rapP][1] || m.maaned > perioder()[S.rapP][2] })), null, 420, 220) : '<p class="not">Ingen tal endnu.</p>'}
+        <div class="forkl"><span><i class="ind"></i>Penge ind</span><span><i class="ud"></i>Penge ud</span><span class="not">Den valgte periode står mørkest</span></div></div>
         <div class="kort"><div class="kort-hoved"><h2>Hent</h2></div><div class="liste">${hent.map(([n, t, h, ty]) => `<div class="li"><div class="t"><b>${n}</b>${t ? `<small>${t}</small>` : ""}</div><button class="knap lille" data-act="${h}" data-hvad="${n}" ${ty ? `data-type="${ty}"` : ""}>${IC.hent} Hent</button></div>`).join("")}</div>${klar}</div></div></div>`;
   }
 
@@ -368,7 +368,7 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261119200509";
     const mangler = T.transaktioner.filter((t) => t.status !== "bogfoert" && t.dato >= k.fra && t.dato <= k.til).length;
     // Én linje om, hvor perioden er; fristen staar i listen og beloebet én gang.
     const status = ind ? "Indberettet." : selv() ? "" : mangler
-      ? `<div class="raekke mellem"><span>${mangler} betaling${mangler > 1 ? "er" : ""} mangler en kvittering</span><button class="knap lille" data-act="filter-gaa" data-f="mangler_kvittering">Se dem</button></div>`
+      ? `<div class="raekke mellem"><span>${mangler} betaling${mangler > 1 ? "er" : ""} i perioden er ikke bogført endnu (kvittering, svar eller vi kigger på den)</span><button class="knap lille" data-act="filter-gaa" data-f="venter">Se dem</button></div>`
       : "Vi indberetter den.";
     return `<div class="gitter g12 moms-g"><div class="kort"><div class="kort-hoved"><h2>Perioder</h2><span class="not">${(MOMSPERIODE[V.momsperiode] || "").replace(/^./, (c) => c.toUpperCase())}</span></div><div class="liste perioder">${K.map((q, i) => !vis(q) ? "" : `<div class="li ${i === S.momsK ? "valgt" : ""}" role="button" tabindex="0" data-act="momsk" data-i="${i}"><div class="t"><b>${q.navn}</b><small>Frist ${F.datoLang(q.frist)}</small></div><div class="hojre"><div class="tal">${F.kr0(q.at_betale)} kr.</div>${pille(...stat(q))}</div></div>`).join("")}</div></div>
       <div class="stak"><div class="kort"><div class="kort-hoved"><h2>${k.navn}</h2></div>
@@ -414,8 +414,8 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261119200509";
     const nh = { tilmeldt: "", accepteret: pille("graa", "På vej"), afvist: pille("roed", "Fejl"), fravalgt: pille("graa", "Fravalgt") }[S.nh?.status] ?? pille("graa", "Ikke tilmeldt");
     const kort = [[initialer(b?.bank || "Bank"), b?.bank || "Din bank", bank[0], bank[1], bank[2], "bank"],
       ["@", "Bilagsadresse", "", `<span class="mono">${E(V.bilagsadresse)}</span>`, "Kopiér", "kopier"],
-      ["E", "E-faktura", nh, "Sendes af sig selv, når kunden har EAN", "", ""],
-      ["SK", "Skattestyrelsen", selv() ? "" : pille("accent", "Kræver adgang"), selv() ? "Du indberetter selv i TastSelv" : "Giv os adgang i TastSelv", "", ""]];
+      ["E", "Regninger direkte ind", nh, "E-fakturaer fra og til dine kunder og leverandører via Nemhandel. Det sker af sig selv.", "", ""],
+      ["SK", "Skattestyrelsen", selv() ? "" : pille("graa", "Mangler adgang"), selv() ? "Du indberetter selv i TastSelv" : "Giv os adgang i TastSelv Erhverv, så vi kan indberette momsen. Skriv til os, så sender vi en vejledning.", selv() ? "" : "Skriv til os", "skriv"]];
     return `<div class="gitter g2">${kort.map(([i, n, st, t, knap, act]) => `<div class="kort forb-kort"><div class="raekke"><span class="monogram">${E(i)}</span><b class="fyld">${E(n)}</b>${st}</div>
       <div class="not">${t}</div>${knap ? `<div><button class="knap lille" data-act="${act}">${knap}</button></div>` : ""}</div>`).join("")}${aiKort()}</div>`;
   }
@@ -474,9 +474,9 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261119200509";
     const f = (l, v) => `<div class="felt"><label>${l}</label><div class="vaerdi">${E(v) || "–"}</div></div>`;
     const ind = {
       firma: `<div class="gitter g2"><div class="stak"><div class="kort"><div class="kort-hoved"><h2>Firmaoplysninger</h2></div><div class="gitter g2">${f("Navn", V.navn)}${f("CVR", V.cvr)}${f("Adresse", V.adresse)}${f("Bilagsadresse", V.bilagsadresse)}${f("Moms afregnes", (MOMSPERIODE[V.momsperiode] || "").replace(/^./, (c) => c.toUpperCase()))}${S.mitid?.dansk ? f("Bekræftet med MitID", S.mitid.bekraeftet ? F.datoLang(String(S.mitid.bekraeftet).slice(0, 10)) : "Ikke endnu") : ""}</div>
-        <div class="raekke mt-3"><button class="knap" data-act="skriv">Ret noget</button>${S.mitid?.dansk && !S.mitid.bekraeftet ? '<button class="knap" data-act="mitid-side">Bekræft med MitID</button>' : ""}</div></div>${suppl()}${konto()}</div><div class="stak">${abonnement()}</div></div>`,
+        <div class="raekke mt-3"><button class="knap" data-act="skriv">Ret noget</button>${S.mitid?.dansk && !S.mitid.bekraeftet ? '<button class="knap" data-act="mitid-side">Bekræft med MitID</button>' : ""}</div></div>${konto()}${suppl()}</div><div class="stak">${abonnement()}</div></div>`,
       fakturaer: `<div class="gitter g2"><div class="kort"><div class="kort-hoved"><h2>Udseende</h2></div><div class="raekke"><span class="flogo stor" style="background:${E(V.farve)}">${initialer(V.kort)}</span><b>Logo og farve på fakturaen</b></div>
-          <div class="farver mt-2">${["#c98a3b", "#4b3aa6", "#1f7a4a", "#141414", "#2b55d6"].map((c, i) => `<button class="farve" data-act="farve" data-farve="${c}" style="background:${c}" aria-label="Farve ${i + 1}" aria-pressed="${V.farve === c}"></button>`).join("")}</div></div>
+          <div class="farver mt-2">${["#c98a3b", "#4b3aa6", "#8a3b5c", "#141414", "#2b55d6"].map((c, i) => `<button class="farve" data-act="farve" data-farve="${c}" style="background:${c}" aria-label="Farve ${i + 1}" aria-pressed="${V.farve === c}"></button>`).join("")}</div></div>
         <div class="kort"><div class="kort-hoved"><h2>Betaling og rykkere</h2></div><div class="liste">
           <div class="li"><div class="t"><b>Påmindelse af sig selv</b><small>2 dage efter forfald, uden gebyr</small></div><button class="sw" role="switch" aria-checked="${V.auto_paamindelse}" aria-label="Påmindelse" data-act="sw-rykker"></button></div>
           <div class="li"><div class="t"><b>Betalingsfrist</b></div><select class="inp auto" id="frist" aria-label="Betalingsfrist">${[8, 14, 30].map((d) => `<option value="${d}" ${V.betalingsfrist === d ? "selected" : ""}>${d} dage</option>`).join("")}</select></div>
@@ -583,13 +583,13 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261119200509";
         ${f.forfald < IDAG ? `<button class="knap ${kan ? "p" : ""}" data-act="rykker" ${kan ? "" : "disabled aria-disabled=\"true\""}>${gebyr ? `Send rykker (gebyr 100 kr.)` : "Send påmindelse"}</button>` : ""}</div>`;
     }
     return `<div class="sh"><h2>Faktura ${f.nr}</h2><button class="ikonknap" data-act="luk" aria-label="Luk">${IC.luk}</button></div><div class="sk graa">${efForloeb(f)}${forloeb}${fakturaDok(f)}</div>
-      <div class="sf"><div>${f.betalt ? pille(pc, pt) : ""}</div><div class="raekke"><button class="knap" data-act="udskriv">${IC.hent} Udskriv</button>${f.status === "krediteret" || f.status === "kreditnota" ? "" : `<button class="knap" data-act="krediter" data-nr="${f.nr}" title="Laver en kreditnota, så fakturaen ikke gælder">Annullér faktura</button>`}</div></div>`;
+      <div class="sf"><div>${f.betalt ? pille(pc, pt) : ""}</div><div class="raekke"><button class="knap" data-act="udskriv">${IC.papir} Udskriv</button>${f.status === "krediteret" || f.status === "kreditnota" ? "" : `<button class="knap" data-act="krediter" data-nr="${f.nr}" title="Laver en kreditnota, så fakturaen ikke gælder">Annullér faktura</button>`}</div></div>`;
   }
 
   function skuffeTb(t) {
     const [pc, pt] = TBST[t.status], kan = t.status === "sendt" || t.status === "accepteret";
     return `<div class="sh"><h2>Tilbud ${t.nr}</h2><button class="ikonknap" data-act="luk" aria-label="Luk">${IC.luk}</button></div><div class="sk graa">${fakturaDok(t, "TILBUD")}</div>
-      <div class="sf"><div>${pille(pc, pt)}</div><div class="raekke"><button class="knap" data-act="udskriv">${IC.hent} Udskriv</button>${t.status === "sendt" ? `<button class="knap" data-act="tb-svar" data-svar="afvist" data-nr="${t.nr}">Sagde nej</button>` : ""}${kan ? `<button class="knap p" data-act="til-faktura" data-nr="${t.nr}">Lav faktura</button>` : `<button class="knap" data-act="ny-tb" data-k="${t.kunde}">Nyt tilbud</button>`}</div></div>`;
+      <div class="sf"><div>${pille(pc, pt)}</div><div class="raekke"><button class="knap" data-act="udskriv">${IC.papir} Udskriv</button>${t.status === "sendt" ? `<button class="knap" data-act="tb-svar" data-svar="afvist" data-nr="${t.nr}">Sagde nej</button>` : ""}${kan ? `<button class="knap p" data-act="til-faktura" data-nr="${t.nr}">Lav faktura</button>` : `<button class="knap" data-act="ny-tb" data-k="${t.kunde}">Nyt tilbud</button>`}</div></div>`;
   }
 
   function skuffeU(u) {
@@ -795,7 +795,7 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261119200509";
     return `<div class="sh"><h2>Kontoudtog: ${E(ku.kunde)}</h2><button class="ikonknap" data-act="luk" aria-label="Luk">${IC.luk}</button></div><div class="sk">
       <table class="vtabel"><thead><tr><th>Dato</th><th class="venstre">Hvad</th><th>Beløb</th></tr></thead><tbody>${ku.linjer.map((l) => `<tr><td>${F.dato(l.dato)}</td><td class="venstre">${E(l.tekst)}</td><td>${F.kr(l.beloeb)}</td></tr>`).join("")}
       <tr class="sum"><td></td><td class="venstre">${ku.saldo > 0 ? "Kunden skylder" : "Saldo"}</td><td>${F.kr(ku.saldo)}</td></tr></tbody></table></div>
-      <div class="sf"><span></span><button class="knap" data-act="udskriv">${IC.hent} Udskriv</button></div>`;
+      <div class="sf"><span></span><button class="knap" data-act="udskriv">${IC.papir} Udskriv</button></div>`;
   }
   function scanHtml() {
     const filer = S.upload || [];
