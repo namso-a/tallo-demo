@@ -1,7 +1,7 @@
 // Tallos app til kunden: computer og telefon. Skærmene er de godkendte fra mockuppen (system/design/platform);
 // data kommer fra kunde_data(), og hver handling kalder en funktion i databasen, der selv tjekker adgang og regler.
-import { DEMO, Fejl, LOKALT, logUd, rpc, sb, sendBilag, session, virksomheder } from "../felles/data.js?v=20261119194058";
-import { SUPABASE_URL } from "../felles/config.js?v=20261119194058";
+import { DEMO, Fejl, LOKALT, logUd, rpc, sb, sendBilag, session, virksomheder } from "../felles/data.js?v=20261119195849";
+import { SUPABASE_URL } from "../felles/config.js?v=20261119195849";
 
   let T, V, IDAG, VID, BRUGER, FIRMAER = [];
   const E = F.esc, IC = F.ICON;
@@ -96,8 +96,8 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261119194058";
     for (let i = 0; i <= 4; i++) { const y = T0 + ih - (ih * i) / 4; g += `<line x1="${L}" x2="${W}" y1="${y}" y2="${y}" stroke="var(--lineal)" ${i ? 'stroke-dasharray="3 4"' : ""}/><text x="${L - 8}" y="${y + 4}" text-anchor="end">${F.kr0((mx * i) / 4)}</text>`; }
     data.forEach((d, i) => {
       const x = L + gw * i + gw / 2, ha = (ih * d.a) / mx, hb = (ih * d.b) / mx, o = d.delvis ? 0.5 : 1;
-      g += `<rect x="${x - bw - 2}" y="${T0 + ih - ha}" width="${bw}" height="${Math.max(ha, 0)}" rx="3" fill="var(--accent)" opacity="${o}"><title>${F.maaned(d.m)}: ${F.kr0(d.a)}</title></rect>` +
-        `<rect x="${x + 2}" y="${T0 + ih - hb}" width="${bw}" height="${Math.max(hb, 0)}" rx="3" fill="var(--accent-mid)" opacity="${o}"><title>${F.maaned(d.m)}: ${F.kr0(d.b)}</title></rect>` +
+      g += `<rect x="${x - bw - 2}" y="${T0 + ih - ha}" width="${bw}" height="${Math.max(ha, 0)}" rx="3" fill="var(--groen)" opacity="${o}"><title>${F.maaned(d.m)}: ${F.kr0(d.a)}</title></rect>` +
+        `<rect x="${x + 2}" y="${T0 + ih - hb}" width="${bw}" height="${Math.max(hb, 0)}" rx="3" fill="var(--roed-lys)" opacity="${o}"><title>${F.maaned(d.m)}: ${F.kr0(d.b)}</title></rect>` +
         `<text x="${x}" y="${H - 8}" text-anchor="middle">${F.maanedKort(d.m)}</text>`;
     });
     if (linje) {
@@ -109,20 +109,37 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261119194058";
   }
 
   // ----------------------------------------------------------------- skaerme ----
-  // Graf til forsiden: penge ind (grøn) og penge ud (grå) pr. måned. En måned med underskud får rødt navn.
-  function grafIndUd(data, W = 720, H = 250) {
+  // Graf til forsiden: penge ind (grøn) og penge ud (lys rød) pr. måned (Othman 19. nov 2026). Hold musen over eller
+  // tryk på en måned: ind, ud og overskud eller underskud. Måneden, der ikke er slut, står lysere.
+  function grafIndUd(data, W = 720, H = 250, nu = 0) {
     const L = W < 500 ? 4 : 64, B = 28, T0 = 12, iw = W - L - 6, ih = H - B - T0, gw = iw / data.length, bw = Math.min(22, gw * 0.3);
     const mx = nice(Math.max(1, ...data.flatMap((d) => [d.ind, d.ud])));
     let g = "";
     for (let i = 0; i <= 4; i++) { const y = T0 + ih - (ih * i) / 4; g += `<line x1="${L}" x2="${W}" y1="${y}" y2="${y}" stroke="var(--lineal)" ${i ? 'stroke-dasharray="3 4"' : ""}/><text x="${L - 8}" y="${y + 4}" text-anchor="end">${W < 500 ? "" : F.kr0((mx * i) / 4)}</text>`; }
     data.forEach((d) => {
-      const x = L + gw * (d.i + 0.5), hi = (ih * d.ind) / mx, hu = (ih * d.ud) / mx, r = d.ind - d.ud;
-      const titel = `${F.maaned(d.m)}: ind ${F.kr0(d.ind)} kr., ud ${F.kr0(d.ud)} kr., ${r >= 0 ? "overskud" : "underskud"} ${F.kr0(Math.abs(r))} kr.`;
-      g += `<g><title>${titel}</title><rect x="${x - bw - 2}" y="${T0 + ih - hi}" width="${bw}" height="${Math.max(hi, 0)}" rx="3" fill="var(--groen)"/>` +
-        `<rect x="${x + 2}" y="${T0 + ih - hu}" width="${bw}" height="${Math.max(hu, 0)}" rx="3" fill="var(--graa-soejle)"/>` +
-        `<text x="${x}" y="${H - 8}" text-anchor="middle" ${r < 0 ? 'fill="var(--roed)" font-weight="600"' : ""}>${F.maanedKort(d.m)}</text></g>`;
+      const x = L + gw * (d.i + 0.5), hi = (ih * d.ind) / mx, hu = (ih * d.ud) / mx, r = d.ind - d.ud, delvis = d.m === nu;
+      const tip = [F.maaned(d.m).replace(/^./, (c) => c.toUpperCase()) + (delvis ? " indtil nu" : ""), F.kr0(d.ind), F.kr0(d.ud), r].join("|");
+      g += `<g class="gm${delvis ? " delvis" : ""}" data-tip="${E(tip)}" tabindex="0" role="img" aria-label="${E(F.maaned(d.m))}: ind ${F.kr0(d.ind)} kr., ud ${F.kr0(d.ud)} kr.">
+        <rect class="gm-felt" x="${L + gw * d.i}" y="${T0}" width="${gw}" height="${ih + B}" fill="transparent"/>
+        <rect x="${x - bw - 2}" y="${T0 + ih - hi}" width="${bw}" height="${Math.max(hi, 0)}" rx="3" fill="var(--groen)"/>
+        <rect x="${x + 2}" y="${T0 + ih - hu}" width="${bw}" height="${Math.max(hu, 0)}" rx="3" fill="var(--roed-lys)"/>
+        <text x="${x}" y="${H - 8}" text-anchor="middle" ${r < 0 ? 'fill="var(--roed)" font-weight="600"' : ""}>${F.maanedKort(d.m)}</text></g>`;
     });
-    return `<svg class="graf" viewBox="0 0 ${W} ${H}" role="img" aria-label="Penge ind og ud pr. måned">${g}</svg>`;
+    return `<div class="graf-boks"><svg class="graf" viewBox="0 0 ${W} ${H}" aria-label="Penge ind og ud pr. måned">${g}</svg><div class="graf-tip" hidden></div></div>`;
+  }
+  function grafTip(gm) {
+    const boks = gm?.closest(".graf-boks"), tip = boks?.querySelector(".graf-tip");
+    if (!tip) return;
+    boks.querySelectorAll(".gm.aktiv").forEach((x) => x.classList.remove("aktiv"));
+    if (!gm.dataset.tip) { tip.hidden = true; return; }
+    gm.classList.add("aktiv");
+    const [m, ind, ud, r] = gm.dataset.tip.split("|"), res = +r;
+    tip.innerHTML = `<b>${E(m)}</b><div><i class="prik ind"></i>Ind <span class="tal">${ind} kr.</span></div><div><i class="prik ud"></i>Ud <span class="tal">${ud} kr.</span></div>
+      <div class="${res >= 0 ? "plus" : "minus"}">${res >= 0 ? "Overskud" : "Underskud"} <span class="tal">${F.kr0(Math.abs(res))} kr.</span></div>`;
+    tip.hidden = false;
+    const bb = boks.getBoundingClientRect(), gb = gm.querySelector(".gm-felt").getBoundingClientRect();
+    const x = Math.min(Math.max(gb.left - bb.left + gb.width / 2 - tip.offsetWidth / 2, 0), bb.width - tip.offsetWidth);
+    tip.style.left = x + "px";
   }
 
   // Forsiden (Othman og Mohammed 19. nov 2026): så nemt, at alle forstår det. Tjener jeg penge (én linje i grøn eller
@@ -137,8 +154,8 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261119194058";
     if (svar.length) ting.push(["", `Læs svar fra ${hvem}`, svar.length > 1 ? `${svar.length} sager` : E(svar[0].emne), svar.length > 1 ? `data-act="skriv"` : `data-act="aabn-h" data-id="${svar[0].id}"`]);
     if (selv() && V.aaben && (S.ind || []).length) ting.push(["", `Godkend ${S.ind.length} ${S.ind.length > 1 ? "posteringer" : "postering"}`, "Ét tryk for hver", `href="#godkend"`]);
     const nk = selv() ? 0 : mangler.length, nv = nk + spm.length;
-    if (nk) ting.push(["", `Send ${nk} kvittering${nk > 1 ? "er" : ""}`, "Vi mangler dem for at bogføre", `data-act="vis-venter"`]);
-    if (spm.length) ting.push(["", `Svar på ${spm.length} spørgsmål`, `Fra ${hvem} om dine betalinger`, `data-act="vis-venter"`]);
+    if (nk) ting.push(["", `Send ${nk} kvittering${nk > 1 ? "er" : ""}`, "Vi mangler dem for at bogføre", `data-act="filter-gaa" data-f="mangler_kvittering"`]);
+    if (spm.length) ting.push(["", `Svar på ${spm.length} spørgsmål`, `Fra ${hvem} om dine betalinger`, `data-act="filter-gaa" data-f="spoergsmal"`]);
     if (forsent.length) ting.push(["roed", `${forsent.length} faktura${forsent.length > 1 ? "er" : ""} er for sent`, `Kunderne skylder dig ${F.kr0(sum(ub, (f) => f.rest))} kr.`, `href="#salg"`]);
     if (T.udlaeg_skyldig > 0) ting.push(["", `Firmaet skylder dig ${F.kr0(T.udlaeg_skyldig)} kr.`, "Du har lagt ud med egne penge", udl.length ? `data-act="aabn-u" data-id="${udl[0].id}"` : `href="#rapporter"`]);
     const md = +IDAG.slice(5, 7);
@@ -166,6 +183,7 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261119194058";
     const komIGang = igang ? `<div class="kom-i-gang"><div class="kh"><b>Kom godt i gang</b><span class="not">${trin.filter(([, ok]) => ok).length} af ${trin.length}</span>
         <button class="ikonknap" data-act="skjul" data-n="kom-i-gang" aria-label="Skjul">${IC.luk}</button></div>
       ${trin.map(([t, ok, attr]) => `<div class="trin ${ok ? "ok" : ""}"><span class="flueben">${ok ? IC.check : ""}</span><span class="t">${t}</span>${ok ? "" : `<button class="knap lille" ${attr}>${attr.includes("moms-passer") ? "Det passer" : "Gør det"}</button>`}</div>`).join("")}</div>` : "";
+    S.antalTing = ting.length + (tilbud ? 1 : 0);
     const vis = S.alleTing ? ting : ting.slice(0, 3);
     const goer = `<section class="ov-goer" aria-label="Det skal du gøre"><h2>Det skal du gøre</h2>${komIGang}
       ${ting.length || tilbud ? `<div class="opgaver">${vis.map(knap).join("")}${S.alleTing || ting.length <= 3 ? tilbud : ""}</div>
@@ -179,18 +197,18 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261119194058";
       ? `<h2 class="${res >= 0 ? "plus" : "minus"}">${res >= 0 ? `Du har tjent <span class="tal">${F.kr0(res)} kr.</span> i år` : `Du har et underskud på <span class="tal">${F.kr0(-res)} kr.</span> i år`}</h2>
          <p><span class="par"><span class="prik ind"></span>Penge ind <b class="tal">${F.kr0(ind)} kr.</b></span><span class="par"><span class="prik ud"></span>Penge ud <b class="tal">${F.kr0(ud)} kr.</b></span><span class="not">Uden moms</span></p>`
       : `<h2>Her kan du se, om du tjener penge</h2><p>Når de første betalinger er bogført, står året her.</p>`}</section>`;
-    const graf = harTal ? `<section class="ov-graf" aria-label="Måned for måned"><h3>Måned for måned</h3>${matchMedia("(max-width: 600px)").matches ? grafIndUd(mdr, 380, 230) : grafIndUd(mdr)}</section>` : "";
-    const tot = total(), skyld = momsSkyldig();
-    const tal = `<div class="ov-tal"><a class="ov-tal-kort" href="#rapporter"><span class="etiket">På kontoen nu</span><span class="stort tal">${F.kr0(tot)} kr.</span>
-        <small>${T.konti.length ? (erSelskab() ? "Det er firmaets penge" : "Husk at lægge til side til skat") : "Banken er ikke koblet til"}</small></a>
+    const graf = harTal ? `<section class="ov-graf" aria-label="Måned for måned"><h3>Måned for måned <span class="forkl"><i class="prik ind"></i>Penge ind <i class="prik ud"></i>Penge ud</span></h3>${matchMedia("(max-width: 600px)").matches ? grafIndUd(mdr, 380, 230, md) : grafIndUd(mdr, 720, 250, md)}</section>` : "";
+    const tot = total(), skyld = kv.status !== "indberettet" ? Math.max(0, kv.at_betale || 0) : 0;
+    const tal = `<div class="ov-tal"><div class="ov-tal-kort stille"><span class="etiket">På kontoen nu</span><span class="stort tal">${F.kr0(tot)} kr.</span>
+        <small>${T.konti.length ? (erSelskab() ? "Det er firmaets penge" : "Husk at lægge til side til skat") : "Banken er ikke koblet til"}</small></div>
       <a class="ov-tal-kort" href="#moms"><span class="etiket">Moms${skyld > 0 ? ` til ${F.datoLang(kv.frist)}` : ""}</span><span class="stort tal">${F.kr0(skyld)} kr.</span>
-        <small>${skyld > 0 ? "Læg dem til side, de er ikke dine" : "Du skylder ikke moms lige nu"}</small></a></div>`;
+        <small>${skyld > 0 ? `For ${E(kv.navn.replace(/ \d{4}$/, ""))}. Læg dem til side` : "Du skylder ikke moms lige nu"}</small><span class="pil" aria-hidden="true">›</span></a></div>`;
 
     // Seneste betalinger: fem, og resten med filtre og søgning, når man beder om dem.
     const bet = S.alleBet || S.filter !== "alle" || S.q
       ? `<div class="tabel-top"><h2>Betalinger</h2><div class="filtre" role="group" aria-label="Vis">${filtreKnapper()}</div>
           <label class="soeg">${IC.soeg}<input id="q" placeholder="Søg" value="${E(S.q)}" autocomplete="off"></label></div><div id="trliste">${trListe()}</div>`
-      : `<div class="tabel-top"><h2>Seneste betalinger</h2></div>${T.transaktioner.length ? trTabel(filtreret().slice(0, 5))
+      : `<div class="tabel-top"><h2>Seneste betalinger</h2></div>${T.transaktioner.length ? trTabel(TR().slice(0, 5), new Map(), true)
           + `<div class="tabelfod"><span></span><button class="knap lille" data-act="alle-bet">Se alle ${T.transaktioner.length}</button></div>` : '<div class="tom">Når banken er koblet til, står dine betalinger her.</div>'}`;
     return `<div class="forside">${hoved}<div class="ov-midt">${graf}${tal}</div>${goer}
       <section class="betalinger" id="betalinger" aria-label="Betalinger">${bet}</section></div>`;
@@ -235,7 +253,7 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261119194058";
   const venterT = (t) => t.status === "mangler_kvittering" || t.status === "spoergsmal" || (selv() && t.status === "behandles");
   const gruppe = (t) => (venterT(t) ? "venter" : t.dato.slice(0, 7));
   const gruppeNavn = (g) => (g === "venter" ? "Venter på dig" : F.maaned(+g.slice(5, 7)).replace(/^./, (c) => c.toUpperCase()) + " " + g.slice(0, 4));
-  function trTabel(liste, antal = new Map()) {
+  function trTabel(liste, antal = new Map(), flad = false) {
     const flereKilder = T.konti.length > 1 || T.transaktioner.some((t) => t.kilde && t.kilde !== "bank");
     let g = null;
     const rk = liste.map((t) => {
@@ -243,11 +261,11 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261119194058";
       const kat = bogfoert ? E(t.kat) : /ikke bogført|ukendt/i.test(t.kat) ? "" : "Forslag: " + E(t.kat);
       const kilde = flereKilder ? `${E(k[2])}${T.konti.length > 1 ? " " + E(T.konti.find((x) => x.id === t.konto)?.navn || "") : ""}` : "";
       const under = [t.status === "spoergsmal" && t.spm ? E(t.spm) : "", kilde].filter(Boolean).join(" · ");
-      const ny = gruppe(t), hoved = ny !== g ? `<div class="r gr">${gruppeNavn(ny)}<span class="ant">${antal.get(ny) || ""}</span></div>` : "";
+      const ny = flad ? t.dato.slice(0, 7) : gruppe(t), hoved = ny !== g ? `<div class="r gr">${gruppeNavn(ny)}<span class="ant">${antal.get(ny) || ""}</span></div>` : "";
       g = ny;
       return `${hoved}<div class="r rk" role="button" tabindex="0" data-act="aabn-t" data-id="${t.id}"><div class="c-dato tal">${F.datoKort(t.dato)}</div>
         <div class="tekst c-tekst"><b>${E(t.tekst)}</b>${under ? `<small>${under}</small>` : ""}<small class="kun-mobil">${F.datoKort(t.dato)}${kat ? " · " + kat : ""}</small></div>
-        <div class="c-kat ${bogfoert ? "" : "forslag"}">${kat}</div><div class="c-st">${venter ? pille("handling", pt) : t.status === "behandles" ? `<span class="stille">${pt}</span>` : ""}</div>
+        <div class="c-kat ${bogfoert ? "" : "forslag"}">${kat}</div><div class="c-st">${venter ? pille("neutral", pt) : t.status === "behandles" ? `<span class="stille">${pt}</span>` : ""}</div>
         <div class="b c-bel tal">${t.beloeb > 0 ? "+" : ""}${F.kr(t.beloeb)}</div></div>`;
     }).join("");
     return `<div class="tabel trtabel"><div class="r rk h"><div class="c-dato">Dato</div><div class="c-tekst">Hvad</div><div class="c-kat">Kategori</div><div class="c-st"></div><div class="b c-bel">Kr.</div></div>${rk || '<div class="tom">Ingen betalinger passer til søgningen.</div>'}</div>`;
@@ -487,10 +505,10 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261119194058";
 
   // Abonnement og data: under Firma.
   function abonnement() {
-    return `<div class="kort"><div class="kort-hoved"><h2>${V.pakke === "selv" ? "Gør det selv med AI" : "Med bogholder"}</h2></div><div class="stort tal">${V.pakke === "selv" ? "500" : "1.000"} <small>kr. om måneden, ekskl. moms</small></div>
+    return `<div class="kort"><div class="kort-hoved"><h2>${V.pakke === "selv" ? "Gør det selv med AI" : "Med revisor"}</h2></div><div class="stort tal">${V.pakke === "selv" ? "500" : "1.000"} <small>kr. om måneden, ekskl. moms</small></div>
           <p class="not">${V.pakke === "selv" ? "Du godkender selv. Vi står klar, hvis du er i tvivl." : "Vi bogfører, indberetter momsen og sender dig tallene."}<br>Fast pris, ingen binding.<br>Løn og årsregnskab kan købes til.</p>
-          ${S.pakkeskift ? `<div class="kort tonet mt-2"><b>Du skifter til ${S.pakkeskift.ny_pakke === "selv" ? "Gør det selv med AI" : "Med bogholder"} fra ${F.datoLang(S.pakkeskift.fra)}.</b><div class="mt-2"><button class="knap lille" data-act="skift-pakke" data-p="${V.pakke}">Fortryd</button></div></div>`
-            : `<div class="mt-2"><button class="knap" data-act="skift-pakke" data-p="${V.pakke === "selv" ? "fuld" : "selv"}">Skift til ${V.pakke === "selv" ? "Med bogholder" : "Gør det selv"}</button><div class="lille-tekst mt-1">Gælder fra næste måned.</div></div>`}</div>
+          ${S.pakkeskift ? `<div class="kort tonet mt-2"><b>Du skifter til ${S.pakkeskift.ny_pakke === "selv" ? "Gør det selv med AI" : "Med revisor"} fra ${F.datoLang(S.pakkeskift.fra)}.</b><div class="mt-2"><button class="knap lille" data-act="skift-pakke" data-p="${V.pakke}">Fortryd</button></div></div>`
+            : `<div class="mt-2"><button class="knap" data-act="skift-pakke" data-p="${V.pakke === "selv" ? "fuld" : "selv"}">Skift til ${V.pakke === "selv" ? "Med revisor" : "Gør det selv"}</button><div class="lille-tekst mt-1">Gælder fra næste måned.</div></div>`}</div>
         <div class="kort"><div class="kort-hoved"><h2>Dine data</h2></div><div class="liste"><div class="li"><div class="t"><b>Gemmes i 5 år</b><small>Også hvis du stopper</small></div></div><div class="li"><div class="t"><b>Ligger i EU</b><small>Krypteret, med daglig kopi</small></div></div></div></div>`;
   }
 
@@ -608,7 +626,7 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261119194058";
   // mens du skriver navn eller CVR-nummer. Vælger du en fra CVR, oprettes kunden med adresse med det samme.
   function kundeFelt(e, etiket = "Kunde") {
     const k = kunde(e.kunde);
-    return `<div class="felt kvalg"><label for="ek-s" class="raekke mellem">${etiket} <a href="#" data-act="ny-kunde" class="link">Udfyld selv</a></label>
+    return `<div class="felt kvalg"><label for="ek-s" class="raekke mellem">${etiket} <a href="#" data-act="ny-kunde" class="link">Uden CVR</a></label>
       <input class="inp" id="ek-s" role="combobox" aria-expanded="false" aria-controls="kvalg-liste" autocomplete="off"
         placeholder="Skriv navn eller CVR-nummer" value="${E(k?.navn || "")}">
       <div class="kvalg-liste" id="kvalg-liste" role="listbox" hidden></div></div>`;
@@ -624,7 +642,7 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261119194058";
       + (cvr.length ? `<div class="kvalg-gr">Fra CVR-registret</div>` + cvr.map((v, i) => raekke(`data-act="cvr-kunde" data-i="${i}"`, v.navn,
           [`CVR ${v.cvr}`, v.adresse_by].filter(Boolean).join(" · "))).join("") : "")
       + (S.kcvr?.venter ? `<div class="kvalg-gr">Søger i CVR-registret …</div>` : "")
-      + (!egne.length && !cvr.length && !S.kcvr?.venter && q.length >= 2 ? `<div class="kvalg-gr">Ingen fundet. Tryk "Udfyld selv".</div>` : "");
+      + (!egne.length && !cvr.length && !S.kcvr?.venter && q.length >= 2 ? `<div class="kvalg-gr">Ingen fundet. Tryk "Uden CVR" og skriv selv.</div>` : "");
     boks.innerHTML = html; boks.hidden = !html; inp?.setAttribute("aria-expanded", String(!!html));
   }
   let kTimer = null;
@@ -699,7 +717,7 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261119194058";
     const sm = document.getElementById("ed-sum"); if (sm) sm.innerHTML = edSum(regn(S.ed));
   }
   // ---------------------------------------------------------------- skal/rendering ----
-  const n_aabne = () => aabne().length;
+  const n_aabne = () => S.antalTing ?? aabne().length;
   const SIDE = "tallo-app-side-smal";
   const hilsen = () => { if (S.route !== "overblik" || !V.ejer) return TITEL[S.route]; const h = new Date().getHours(); return `${h < 10 ? "God morgen" : h < 18 ? "Goddag" : "God aften"}, ${V.ejer}`; };
   function skal(indhold) {
@@ -710,7 +728,7 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261119194058";
     const li = (r, n) => `<a href="#${r}" title="${n}" ${S.route === r ? 'aria-current="page"' : ""}>${IC[r === "konto" ? "konto" : r] || IC.check}<span>${n}</span>${r === "overblik" && !selv() && n_aabne() ? `<span class="tael">${n_aabne()}</span>` : ""}${r === "godkend" && (S.ind || []).length ? `<span class="tael">${S.ind.length}</span>` : ""}</a>`;
     const mere = MERE().map(([r]) => r);
     const logo = (stor) => `<span class="monogram ${stor ? "stor" : ""}">${initialer(V.kort)}</span>`;
-    return `<div class="app ${F.sidebar.smal(SIDE) ? "smal" : ""}"><aside class="side"><div class="side-top"><button class="firma" data-act="skift" title="${E(V.kort)}">${logo(true)}<span class="fyld side-tekst"><b>${E(V.kort)}</b><small>CVR ${E(V.cvr)}</small></span>${FIRMAER.length > 1 ? IC.ned.replace("<svg", '<svg class="side-tekst" width="16" height="16"') : ""}</button>${F.sidebar.knap(SIDE)}</div>
+    return `<div class="app ${F.sidebar.smal(SIDE) ? "smal" : ""}"><aside class="side"><div class="side-top"><button class="firma" ${FIRMAER.length > 1 ? 'data-act="skift"' : 'disabled'} title="${E(V.kort)}">${logo(true)}<span class="fyld side-tekst"><b>${E(V.kort)}</b><small>CVR ${E(V.cvr)}</small></span>${FIRMAER.length > 1 ? IC.ned.replace("<svg", '<svg class="side-tekst" width="16" height="16"') : ""}</button>${F.sidebar.knap(SIDE)}</div>
       <nav aria-label="Hovedmenu">${(selv() ? [["godkend", "Godkend"], ...NAV] : NAV).map(([r, n]) => li(r, n)).join("")}</nav>
       <button class="bogholder-raekke" data-act="skriv" title="Skriv til ${selv() ? "Tallo" : "Othman"}"><span class="monogram">${selv() ? "T" : "OA"}</span><span class="side-tekst">Skriv til ${selv() ? "Tallo" : "Othman"}</span></button>
       <div class="undermenu">${UNDER.map(([r, n]) => li(r, n)).join("")}</div></aside>
@@ -886,7 +904,7 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261119194058";
       <input type="hidden" id="t-vej" value="${E(t.vej || "")}"><input type="hidden" id="t-husnr" value="${E(t.husnr || "")}"><input type="hidden" id="t-postnr" value="${E(t.postnr || "")}"><input type="hidden" id="t-by" value="${E(t.by || "")}">
       <fieldset class="rent mt-3"><legend class="not">Pakke (du kan skifte når som helst)</legend>
         ${pk("selv", "Gør det selv med AI", 500, "AI'en foreslår, du godkender.")}
-        ${pk("fuld", "Med bogholder", "1.000", "Vi bogfører det hele og indberetter momsen.")}</fieldset>
+        ${pk("fuld", "Med revisor", "1.000", "Vi bogfører det hele og indberetter momsen.")}</fieldset>
       <label class="flueboks mt-3"><input type="checkbox" id="t-accept" required>
         <span class="not">Jeg accepterer <a class="link" href="https://tallo.dk/handelsbetingelser/" target="_blank" rel="noopener">handelsbetingelserne</a> og <a class="link" href="https://tallo.dk/databehandleraftale/" target="_blank" rel="noopener">databehandleraftalen</a> og har læst <a class="link" href="https://tallo.dk/privatliv/" target="_blank" rel="noopener">privatlivspolitikken</a>.</span></label>
       <button class="knap p fuld-bredde mt-3" type="submit">Opret konto</button></form>
@@ -1050,7 +1068,7 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261119194058";
       S.drawer = null; return opdater(`${v("v-navn")} er oprettet`);
     }
     if (a === "skift-pakke") {
-      const p = el.dataset.p, navn = p === "selv" ? "Gør det selv med AI" : "Med bogholder";
+      const p = el.dataset.p, navn = p === "selv" ? "Gør det selv med AI" : "Med revisor";
       if (p !== V.pakke && !confirm(`Skift til ${navn} fra den 1. i næste måned?`)) return;
       const fra = await rpc("kunde_skift_pakke", { p_virksomhed: VID, p_pakke: p });
       return opdater(fra ? `Du skifter til ${navn} fra ${F.datoLang(fra)}` : "Skiftet er fortrudt");
@@ -1089,6 +1107,7 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261119194058";
     }
     if (a === "send-f") {
       const ed = S.ed, k = kunde(ed.kunde);
+      if (!k) { document.getElementById("ek-s")?.focus(); return F.toast("Skriv hvem fakturaen er til"); }
       const linjer = regn(ed).linjer.map((r2, i) => ({ varetype: ed.linjer[i].vt, antal: r2.antal || 1, enhedspris: r2.pris, ...((ed.linjer[i].tekst || "").trim() ? { beskrivelse: ed.linjer[i].tekst.trim() } : {}) }));
       if (ed.type === "tilbud") {
         const t = await rpc("opret_tilbud", { p_virksomhed: VID, p_debitor: ed.kunde, p_linjer: linjer });
@@ -1268,6 +1287,9 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261119194058";
   }
 
   // Kundefeltet på fakturaen: listen vises, når man trykker i feltet, og lukker ved klik udenfor eller Escape.
+  document.addEventListener("pointerover", (e) => { const gm = e.target.closest?.(".gm"); if (gm) grafTip(gm); });
+  document.addEventListener("pointerout", (e) => { const gm = e.target.closest?.(".gm"); if (gm && !gm.contains(e.relatedTarget)) { gm.classList.remove("aktiv"); const t = gm.closest(".graf-boks")?.querySelector(".graf-tip"); if (t) t.hidden = true; } });
+  document.addEventListener("focusin", (e) => { if (e.target.classList?.contains("gm")) grafTip(e.target); });
   document.addEventListener("pointerdown", (e) => {
     if (e.target.id === "ek-s") { setTimeout(() => { e.target.select(); kundeSoeg(""); }); return; }
     const b = document.getElementById("kvalg-liste");
@@ -1307,10 +1329,9 @@ import { SUPABASE_URL } from "../felles/config.js?v=20261119194058";
     if (a === "ny-f" || a === "ny-tb" || a === "nyt-abon") {
       if (!T.varetyper.length) { S.drawer = { type: "vare" }; F.toast("Opret først en vare eller ydelse, du sælger"); return render(); }
       const vt = T.varetyper[0];
-      const kid = el.dataset.k || T.kunder[0]?.id;
-      S.ed = { type: a === "ny-tb" ? "tilbud" : "faktura", gentag: a === "nyt-abon" ? "Hver måned" : "Ikke gentaget", kunde: kid, inkl: !kunde(kid)?.cvr, linjer: [] };
+      const kid = el.dataset.k || null;
+      S.ed = { type: a === "ny-tb" ? "tilbud" : "faktura", gentag: a === "nyt-abon" ? "Hver måned" : "Ikke gentaget", kunde: kid, inkl: kid ? !kunde(kid)?.cvr : false, linjer: [] };
       S.ed.linjer.push({ vt: vt.id, antal: 1, pris: medMoms(vt, vt.pris) });
-      if (!S.ed.kunde) { S.nyKunde = {}; return aabn({ type: "kunde" }); }
       return aabn({ type: "ed" });
     }
     if (a === "ed-type") { S.ed.type = el.dataset.t; return render(); }

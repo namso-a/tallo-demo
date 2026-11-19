@@ -78,7 +78,7 @@ b, strong { font-weight: 600; }
 .pille { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 3px 10px; font-size: var(--t-lille); font-weight: 500; white-space: nowrap; }
 /* Kun det, der kraever noget, faar farve: handling (violet) og fejl (roed). Alt andet er stille, graa tekst.
    De gamle navne (accent, gul, roed, groen, graa, kat) peger paa de tre. */
-.pille.handling, .pille.accent, .pille.gul { background: var(--accent-svag); color: var(--accent); }
+.pille.handling, .pille.accent, .pille.gul { background: var(--bg); color: var(--tekst); }   /* violet er kun knapper (19. nov 2026) */
 .pille.fejl, .pille.roed { background: var(--roed-svag); color: var(--roed); }
 .stille, .pille.groen, .pille.graa, .pille.kat { background: none; padding: 0; color: var(--daempet); font-weight: 400; font-size: inherit; }
 .statusprik { display: none; }
@@ -233,7 +233,7 @@ details.fold summary::-webkit-details-marker { display: none; } details.fold[ope
 .skuffe .sk.graa { background: var(--bg); }
 .flueboks { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; } .flueboks input { margin-top: 4px; }
 textarea.inp.hoej { min-height: 140px; }
-.forkl i.ind { background: var(--accent); } .forkl i.ud { background: var(--accent-mid); }
+.forkl i.ind { background: var(--groen); } .forkl i.ud { background: var(--roed-lys); }
 .fuld-bredde { width: 100%; justify-content: center; }
 /* En primaer knap, der ikke kan bruges endnu, er neutral: farve betyder handling */
 .knap.p[disabled], .knap.sort[disabled] { background: transparent; color: var(--daempet); box-shadow: inset 0 0 0 1px var(--lineal); }
@@ -257,3 +257,11 @@ textarea.inp.hoej { min-height: 140px; }
 /* Toast med en handling (fx Fortryd) */
 .toast { display: flex; align-items: center; gap: 14px; width: max-content; }
 .toast-knap { border: 0; background: none; color: inherit; font: inherit; font-weight: 600; padding: 6px 4px; margin: -6px -6px -6px 0; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+
+/* 16. Faner og filtre paa telefonen: man kan se, at der er mere til hoejre */
+@media (max-width: 700px) {
+  .faner, .filtre { overflow-x: auto; scrollbar-width: none; -webkit-mask-image: linear-gradient(90deg, #000 85%, transparent); mask-image: linear-gradient(90deg, #000 85%, transparent); }
+  .faner::-webkit-scrollbar, .filtre::-webkit-scrollbar { display: none; }
+  .faner > *, .filtre > * { flex: none; }
+}
+.firma:disabled { cursor: default; opacity: 1; color: inherit; }

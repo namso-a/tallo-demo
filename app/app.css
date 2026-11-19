@@ -230,7 +230,7 @@ fieldset.rent { border: 0; padding: 0; margin-left: 0; margin-right: 0; }
 .ov-hoved h2.plus .tal { color: var(--groen); } .ov-hoved h2.minus .tal { color: var(--roed); }
 .ov-hoved p { margin: 10px 0 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; color: var(--daempet); }
 .ov-hoved p b { color: var(--tekst); font-weight: 500; margin-right: 10px; }
-.prik { width: 10px; height: 10px; border-radius: 3px; display: inline-block; } .prik.ind { background: var(--groen); } .prik.ud { background: var(--graa-soejle); }
+.prik { width: 10px; height: 10px; border-radius: 3px; display: inline-block; } .prik.ind { background: var(--groen); } .prik.ud { background: var(--roed-lys); }
 .ov-midt { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 20px; align-items: stretch; }
 .ov-graf { background: var(--kort); border: 1px solid var(--lineal); border-radius: var(--radius); padding: 18px 18px 8px; }
 .ov-graf h3 { margin: 0 0 8px; font-size: var(--t-lille); font-weight: 500; color: var(--daempet); }
@@ -243,15 +243,15 @@ fieldset.rent { border: 0; padding: 0; margin-left: 0; margin-right: 0; }
 .ov-tal-kort small { color: var(--daempet); font-size: var(--t-lille); }
 .ov-goer h2 { margin: 0 0 12px; font-size: var(--t-h2); font-weight: 500; letter-spacing: -.015em; }
 .opgaver { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
-.opg { display: flex; align-items: center; gap: 12px; min-height: 76px; padding: 16px 18px; border: 1px solid var(--accent-mid); border-radius: var(--radius-lille);
-  background: var(--accent-svag); color: var(--tekst); font: inherit; text-align: left; text-decoration: none; cursor: pointer;
+.opg { display: flex; align-items: center; gap: 12px; min-height: 76px; padding: 16px 18px; border: 1px solid var(--lineal); border-radius: var(--radius-lille);
+  background: var(--kort); color: var(--tekst); font: inherit; text-align: left; text-decoration: none; cursor: pointer;
   transition: border-color var(--hurtig) var(--let), transform var(--hurtig) var(--let); }
-@media (hover: hover) { .opg:hover { border-color: var(--accent); } }
+@media (hover: hover) { .opg:hover { background: var(--raekke-hover); border-color: var(--svag); } }
 .opg:active { transform: scale(.98); }
-.opg .t { flex: 1; min-width: 0; } .opg .t b { display: block; font-weight: 600; color: var(--accent); }
+.opg .t { flex: 1; min-width: 0; } .opg .t b { display: block; font-weight: 600; color: var(--tekst); }
 .opg .t small { display: block; color: var(--daempet); font-size: var(--t-lille); margin-top: 2px; overflow-wrap: anywhere; }
-.opg .pil { font-size: 24px; line-height: 1; color: var(--accent); }
-.opg.roed { background: var(--roed-svag); border-color: transparent; } .opg.roed .t b, .opg.roed .pil { color: var(--roed); }
+.opg .pil { font-size: 24px; line-height: 1; color: var(--daempet); }
+.opg.roed { background: var(--kort); border-color: var(--roed-svag); } .opg.roed .t b, .opg.roed .pil { color: var(--roed); }
 .opg.tilbud { background: var(--bg); border-color: transparent; cursor: default; flex-wrap: wrap; }
 .opg.tilbud .t b { color: var(--tekst); }
 .forside .betalinger { padding-top: 8px; }
@@ -317,3 +317,20 @@ fieldset.rent { border: 0; padding: 0; margin-left: 0; margin-right: 0; }
   .el-tal span { display: block; font-size: var(--t-lille); color: var(--daempet); margin-bottom: 4px; }
   .el-bel { grid-area: bel; padding-top: 0; font-weight: 600; }
 }
+
+/* Grafen på forsiden: forklaring, hover pr. måned og måneden, der ikke er slut */
+.ov-graf h3 { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; }
+.ov-graf .forkl { display: inline-flex; align-items: center; gap: 6px; font-weight: 400; }
+.ov-graf .forkl .prik + .prik, .ov-graf .forkl i.ud { margin-left: 10px; }
+.graf-boks { position: relative; }
+.graf .gm { cursor: default; outline: none; }
+.graf .gm.delvis rect:not(.gm-felt) { opacity: .45; }
+.graf .gm.aktiv .gm-felt, .graf .gm:focus-visible .gm-felt { fill: var(--raekke-hover); }
+.graf-tip { position: absolute; top: 0; z-index: 5; min-width: 170px; padding: 10px 12px; border-radius: 12px; background: var(--kort);
+  box-shadow: var(--kort-skygge), 0 0 0 1px var(--lineal); font-size: var(--t-lille); pointer-events: none; display: grid; gap: 3px; }
+.graf-tip div { display: flex; align-items: center; gap: 6px; } .graf-tip .tal { margin-left: auto; padding-left: 12px; }
+.graf-tip .plus { color: var(--groen); font-weight: 600; } .graf-tip .minus { color: var(--roed); font-weight: 600; }
+.pille.neutral { background: var(--bg); color: var(--tekst); }
+
+.ov-tal-kort { position: relative; } .ov-tal-kort .pil { position: absolute; right: 18px; top: 50%; transform: translateY(-50%); font-size: 24px; color: var(--daempet); }
+.ov-tal-kort.stille { cursor: default; } @media (hover: hover) { .ov-tal-kort.stille:hover { background: var(--bg); } }
